@@ -1,5 +1,6 @@
 
 # E-Numbers Lookup Application
+I have it running on my server at https://enumbers.jarvisdiscordbot.net/ and there is a basic api at https://enumbers.jarvisdiscordbot.net/api/enumbers   (if you use it please don't spam it lol)
 
 A modern web application for looking up E-number food additives with comprehensive data from Open Food Facts. Built with HTML, CSS, JavaScript, and a Python Flask API backend.
 
