@@ -1039,9 +1039,9 @@ function createTableRow(entry) {
     const searchTerms = [
       entry.code,
       entry.name,
-      'food additive',
-      'safety',
-      'health effects'
+   //   'food additive',
+   //   'safety',
+   //   'health effects'
     ].filter(term => term && term.trim() !== '').join(' ');
     
     researchLink.href = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(searchTerms)}`;
