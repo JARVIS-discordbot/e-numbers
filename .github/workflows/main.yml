@@ -29,7 +29,7 @@ jobs:
       - name: Commit & push if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Update Chart.js to 4.5.0"
+          commit_message: "Update Chart.js"
           # --- 🛠️ FIX 1: Changed 'files' to 'file_pattern' ---
           file_pattern: static/js/chart.umd.js 
           # Note: The GITHUB_TOKEN is automatically used by the action 
