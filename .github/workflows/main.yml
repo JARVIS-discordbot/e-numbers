@@ -3,36 +3,35 @@ name: Update Chart.js
 on:
   workflow_dispatch:
   schedule:
-    # Runs every Sunday at midnight UTC
     - cron: '0 0 * * 0'
 
 jobs:
   update-chartjs:
     runs-on: ubuntu-latest
+    
+    # --- 🔑 FIX 2: Add WRITE permissions for the GITHUB_TOKEN ---
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Required for git-auto-commit-action to push changes
           persist-credentials: true
 
-      - name: Get latest Chart.js version and download
-        id: chartjs_version
+      - name: Download latest chart.umd.js
         run: |
-          # Fetch the latest stable version number from npm
-          LATEST_VERSION=$(curl -s "https://registry.npmjs.org/chart.js/latest" | jq -r ".version")
-          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest Chart.js version found: $LATEST_VERSION"
-          
-          # Download the file using the dynamic version
           mkdir -p static/js
-          curl -L "https://cdn.jsdelivr.net/npm/chart.js@$LATEST_VERSION/dist/chart.umd.js" -o static/js/chart.umd.js
+          # Note: I'm keeping your hardcoded version for now, 
+          # but consider making this dynamic as previously recommended.
+          curl -L https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js -o static/js/chart.umd.js
 
       - name: Commit & push if changed
-        # Use a dedicated action for cleaner git operations
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          # Use the dynamically fetched version in the commit message
-          commit_message: "Update Chart.js to ${{ steps.chartjs_version.outputs.latest_version }}"
-          files: static/js/chart.umd.js
+          commit_message: "Update Chart.js to 4.5.0"
+          # --- 🛠️ FIX 1: Changed 'files' to 'file_pattern' ---
+          file_pattern: static/js/chart.umd.js 
+          # Note: The GITHUB_TOKEN is automatically used by the action 
+          # and no longer needs to be explicitly passed in the `env:` block 
+          # when using the `permissions:` block above.
