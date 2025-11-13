@@ -3,7 +3,7 @@ name: Update Chart.js
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'       # weekly at midnight UTC on Sunday (adjust as needed)
+    - cron: '0 0 * * 0'
 
 jobs:
   update-chartjs:
@@ -15,12 +15,17 @@ jobs:
 
       - name: Download latest chart.umd.js
         run: |
-          curl -L https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js \
-            -o static/js/chart.umd.js
+          mkdir -p static/js
+          curl -L https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js -o static/js/chart.umd.js
 
       - name: Commit & push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add static/js/chart.umd.js
-          git diff --cached --quiet || (git commit -m "Update Chart.js to 4.5.0" && git push)
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Chart.js to 4.5.0"
+            git push
+          else
+            echo "No changes to commit"
+          fi
