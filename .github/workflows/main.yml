@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true   # allows git push using GITHUB_TOKEN
 
       - name: Download latest chart.umd.js
         run: |
@@ -28,4 +30,5 @@ jobs:
             git push
           else
             echo "No changes to commit"
-          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
