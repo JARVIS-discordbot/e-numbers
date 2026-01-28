@@ -189,14 +189,6 @@ curl -X POST http://0.0.0.0:5000/api/update_enumbers_from_off_additives
 2. **Backend**: Extend `api.py` for new endpoints
 3. **Data**: Update `enumbers.json` or sync from Open Food Facts
 
-## 📱 Mobile Support
-
-The application is fully responsive with:
-- Touch-friendly interface
-- Optimized table layouts for small screens
-- Collapsible navigation
-- Appropriate font scaling
-
 ## 🎯 Categories
 
 The application organizes E-numbers into these categories:
