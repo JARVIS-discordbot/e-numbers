@@ -158,6 +158,20 @@ def update_enumbers_from_off_additives():
     updated = update_enumbers_from_off_additives_logic()
     return jsonify({'message': f'Updated {updated} entries'})
 
+def _extract_ecodes_from_off_tag(add):
+    """Extract E-code(s) from OFF tag. Uses 'id' (canonical e.g. en:e472a-...) and 'name'."""
+    codes = set()
+    # 1. Tag id is canonical: "en:e472a-acetic-acid-esters..." -> E472A
+    tag_id = add.get('id', '')
+    m = re.search(r'e(\d+[a-z]?)(?:-|$)', tag_id, re.I)
+    if m:
+        codes.add('E' + m.group(1).upper())
+    # 2. Also parse name: "E472a - Acetic acid esters" or "E 472a"
+    raw_name = add.get('name', '').upper().replace(' ', '')
+    for m in re.finditer(r'E(\d+)([A-Z])?', raw_name):
+        codes.add('E' + m.group(1) + (m.group(2) or ''))
+    return codes
+
 def update_enumbers_from_off_additives_logic():
     global enumbers
     print("Fetching master additive list from OFF...")
@@ -169,16 +183,12 @@ def update_enumbers_from_off_additives_logic():
         print(f"Error fetching OFF additives: {e}")
         return 0
 
-    # 1. Build a smart map of E-Codes from Open Food Facts
-    # This turns "E586 - 4-hexylresorcinol" into the key "E586"
+    # 1. Build map of E-Codes from Open Food Facts (id + name, normalize case)
     additive_dict = {}
     for add in additives:
-        raw_name = add.get('name', '').upper()
-        # Regex looks for 'E' followed by digits (e.g., E120, E586)
-        match = re.search(r'(E\d+[A-Z]?)', raw_name.replace(' ', ''))
-        if match:
-            clean_code = match.group(1)
-            additive_dict[clean_code] = add
+        for code in _extract_ecodes_from_off_tag(add):
+            if code:
+                additive_dict[code.upper()] = add
 
     updated = 0
     # 2. Match your local list against the OFF map
@@ -202,23 +212,6 @@ def update_enumbers_from_off_additives_logic():
 
     save_enumbers(enumbers)
     print(f"Sync complete. Matched {updated} official E-numbers.")
-    return updated
-
-    additive_dict = {add['name'].replace(' ', '').upper(): add for add in additives if 'name' in add}
-    updated = 0
-
-    for entry in enumbers:
-        code = entry.get('code', '').upper()
-        if code in additive_dict:
-            add = additive_dict[code]
-            entry['openfoodfacts_additive'] = {
-                'name': add.get('name'),
-                'url': add.get('url'),
-                'sameAs': add.get('sameAs', [])
-            }
-            updated += 1
-
-    save_enumbers(enumbers)
     return updated
 
 @app.route('/api/enumbers', methods=['GET'])
