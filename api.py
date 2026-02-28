@@ -165,8 +165,44 @@ def update_enumbers_from_off_additives_logic():
     try:
         response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
         additives = response.json().get("tags", [])
-    except:
+    except Exception as e:
+        print(f"Error fetching OFF additives: {e}")
         return 0
+
+    # 1. Build a smart map of E-Codes from Open Food Facts
+    # This turns "E586 - 4-hexylresorcinol" into the key "E586"
+    additive_dict = {}
+    for add in additives:
+        raw_name = add.get('name', '').upper()
+        # Regex looks for 'E' followed by digits (e.g., E120, E586)
+        match = re.search(r'(E\d+[A-Z]?)', raw_name.replace(' ', ''))
+        if match:
+            clean_code = match.group(1)
+            additive_dict[clean_code] = add
+
+    updated = 0
+    # 2. Match your local list against the OFF map
+    for entry in enumbers:
+        code = entry.get('code', '').upper()
+        
+        if code in additive_dict:
+            add = additive_dict[code]
+            # Populate the gold-mine data!
+            entry['openfoodfacts_additive'] = {
+                'name': add.get('name'),
+                'url': add.get('url'),
+                'sameAs': add.get('sameAs', [])
+            }
+            # If it was marked 'removed' before, bring it back
+            entry.pop('removed', None)
+            updated += 1
+        else:
+            # If it's truly not in the official list, mark it
+            entry['removed'] = True
+
+    save_enumbers(enumbers)
+    print(f"Sync complete. Matched {updated} official E-numbers.")
+    return updated
 
     additive_dict = {add['name'].replace(' ', '').upper(): add for add in additives if 'name' in add}
     updated = 0
