@@ -9,6 +9,8 @@ import re
 import html
 import bleach
 import time
+import threading
+from datetime import datetime
 from functools import wraps
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -16,6 +18,14 @@ app = Flask(__name__)
 
 # Security: Apply ProxyFix if behind a reverse proxy
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# Global status tracker
+task_status = {
+    "is_running": False,
+    "current": 0,
+    "total": 0,
+    "last_completed": None
+}
 
 # Security: Configure CORS properly
 CORS(app, 
@@ -43,7 +53,6 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy'] = "geolocation=(), microphone=(), camera=(), payment=()"
     return response
 
 EN_FILE = 'enumbers.json'
@@ -66,14 +75,6 @@ def sanitize_code(code):
     sanitized = re.sub(r'[^E0-9a-zA-Z\-]', '', code.upper().strip())
     return sanitized[:10]
 
-def validate_json_input(data, required_fields):
-    if not data or not isinstance(data, dict):
-        return False, "Invalid JSON data"
-    for field in required_fields:
-        if field not in data or not data[field]:
-            return False, f"Missing required field: {field}"
-    return True, None
-
 def check_editing_allowed(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -95,154 +96,100 @@ def load_enumbers():
 
 def save_enumbers(data):
     try:
-        for entry in data:
-            if 'code' in entry: entry['code'] = sanitize_code(entry['code'])
-            if 'name' in entry: entry['name'] = sanitize_string(entry['name'], 500)
         with open(EN_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Error saving: {e}")
 
-# --- Open Food Facts Logic ---
+# --- Background Task Logic ---
 
-def fetch_openfoodfacts_product(barcode):
-    clean_barcode = re.sub(r'[^0-9E\-a-zA-Z]', '', str(barcode))[:50]
-    url = f"https://world.openfoodfacts.org/api/v2/product/{clean_barcode}.json"
-    try:
-        response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=10)
-        return response.json().get("product") if response.status_code == 200 else None
-    except: return None
+def run_deep_scan():
+    global enumbers, task_status
+    task_status["is_running"] = True
+    task_status["total"] = len(enumbers)
+    task_status["current"] = 0
+    
+    print(f"Starting Deep Scan of {task_status['total']} items...")
+    
+    updated_count = 0
+    for entry in enumbers:
+        task_status["current"] += 1
+        barcode = entry.get('code')
+        
+        # Only fetch if we haven't synced in the last 7 days
+        if barcode:
+            url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+            try:
+                resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=5)
+                if resp.status_code == 200:
+                    entry['openfoodfacts'] = resp.json().get("product")
+                    entry['last_synced'] = datetime.now().isoformat()
+                    updated_count += 1
+                print(f"[{task_status['current']}/{task_status['total']}] Scanned {barcode}")
+            except:
+                pass
+            time.sleep(1) # Polite delay
+            
+    save_enumbers(enumbers)
+    task_status["is_running"] = False
+    task_status["last_completed"] = datetime.now().isoformat()
+    print(f"Deep Scan Complete. Updated {updated_count} entries.")
 
-def fetch_all_additives():
-    url = "https://world.openfoodfacts.org/facets/additives.json"
-    try:
-        response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
-        return response.json().get("tags", []) if response.status_code == 200 else []
-    except: return []
+# --- Routes ---
+
+@app.route('/api/update_status', methods=['GET'])
+def get_status():
+    return jsonify(task_status)
+
+@app.route('/api/update_openfoodfacts', methods=['POST'])
+@check_editing_allowed
+def update_openfoodfacts():
+    if task_status["is_running"]:
+        return jsonify({'error': 'A task is already running'}), 409
+    
+    thread = threading.Thread(target=run_deep_scan)
+    thread.start()
+    return jsonify({'message': 'Deep scan started in background'}), 202
+
+@app.route('/api/update_enumbers_from_off_additives', methods=['POST'])
+@check_editing_allowed
+def update_enumbers_from_off_additives():
+    # This remains synchronous as it is fast
+    updated = update_enumbers_from_off_additives_logic()
+    return jsonify({'message': f'Updated {updated} entries'})
 
 def update_enumbers_from_off_additives_logic():
     global enumbers
-    additives = fetch_all_additives()
-    if not additives: return 0
+    print("Fetching master additive list from OFF...")
+    url = "https://world.openfoodfacts.org/facets/additives.json"
+    try:
+        response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
+        additives = response.json().get("tags", [])
+    except:
+        return 0
 
-    def normalize_code(code):
-        match = re.search(r'(E\d+)', code.replace(' ', '').replace('-', '').upper())
-        return match.group(1) if match else code.replace(' ', '').replace('-', '').upper()
-
-    additive_dict = {}
-    for add in additives:
-        if 'name' in add and add['name'].startswith('E'):
-            code = normalize_code(add['name'])
-            additive_dict[code] = add
-
-    code_to_entry = {normalize_code(entry.get('code', '')): entry for entry in enumbers}
+    additive_dict = {add['name'].replace(' ', '').upper(): add for add in additives if 'name' in add}
     updated = 0
 
     for entry in enumbers:
-        entry_code = normalize_code(entry.get('code', ''))
-        if entry_code in additive_dict:
-            add = additive_dict[entry_code]
+        code = entry.get('code', '').upper()
+        if code in additive_dict:
+            add = additive_dict[code]
             entry['openfoodfacts_additive'] = {
                 'name': add.get('name'),
                 'url': add.get('url'),
                 'sameAs': add.get('sameAs', [])
             }
-            entry.pop('removed', None)
-        else:
-            entry['removed'] = True
-        updated += 1
-
-    for code, add in additive_dict.items():
-        if code not in code_to_entry:
-            enumbers.append({
-                'code': code,
-                'name': add.get('name', code),
-                'openfoodfacts_additive': {
-                    'name': add.get('name'), 'url': add.get('url'), 'sameAs': add.get('sameAs', [])
-                }
-            })
             updated += 1
 
     save_enumbers(enumbers)
     return updated
 
-# --- Routes ---
-
-@app.route('/api/update_openfoodfacts', methods=['POST'])
-@check_editing_allowed
-def update_openfoodfacts():
-    global enumbers
-    updated = 0
-    for entry in enumbers:
-        barcode = entry.get('code')
-        if barcode:
-            product = fetch_openfoodfacts_product(barcode)
-            if product:
-                entry['openfoodfacts'] = product
-                updated += 1
-            time.sleep(1) # Rate limiting
-    save_enumbers(enumbers)
-    return jsonify({'message': f'Updated {updated} entries'})
-
-@app.route('/api/update_enumbers_from_off_additives', methods=['POST'])
-@check_editing_allowed
-def update_enumbers_from_off_additives():
-    updated = update_enumbers_from_off_additives_logic()
-    if updated == 0: return jsonify({'error': 'Failed fetch'}), 500
-    return jsonify({'message': f'Updated {updated} entries'})
-
 @app.route('/api/enumbers', methods=['GET'])
 def get_enumbers():
-    query = sanitize_string(request.args.get('q', ''), 100).lower()
-    try:
-        limit = min(int(request.args.get('limit', 1000)), 2000)
-    except (ValueError, TypeError):
-        limit = 1000
-
-    results = enumbers
-    if query:
-        results = [e for e in enumbers if query in e['code'].lower() or query in e['name'].lower()]
-    return jsonify(results[:limit])
-
-@app.route('/api/enumbers', methods=['POST'])
-@check_editing_allowed
-def create_enumber():
-    data = request.get_json()
-    is_valid, err = validate_json_input(data, ['code', 'name'])
-    if not is_valid: return jsonify({'error': err}), 400
-    
-    clean_code = sanitize_code(data['code'])
-    if any(e['code'] == clean_code for e in enumbers):
-        return jsonify({'error': 'Exists'}), 409
-        
-    new_entry = {'code': clean_code, 'name': sanitize_string(data['name'], 500)}
-    enumbers.append(new_entry)
-    save_enumbers(enumbers)
-    return jsonify(new_entry), 201
-
-@app.route('/api/enumbers/<code>', methods=['PUT'])
-@check_editing_allowed
-def update_enumber(code):
-    data = request.get_json()
-    clean_code = sanitize_code(code)
-    for e in enumbers:
-        if e['code'] == clean_code:
-            e['name'] = sanitize_string(data.get('name', e['name']), 500)
-            save_enumbers(enumbers)
-            return jsonify(e)
-    return jsonify({'error': 'Not found'}), 404
-
-@app.route('/api/enumbers/<code>', methods=['DELETE'])
-@check_editing_allowed
-def delete_enumber(code):
-    clean_code = sanitize_code(code)
-    global enumbers
-    for i, e in enumerate(enumbers):
-        if e['code'] == clean_code:
-            removed = enumbers.pop(i)
-            save_enumbers(enumbers)
-            return jsonify(removed)
-    return jsonify({'error': 'Not found'}), 404
+    query = request.args.get('q', '').lower()
+    results = [e for e in enumbers if query in e['code'].lower() or query in e['name'].lower()] if query else enumbers
+    return jsonify(results[:1000])
 
 @app.route('/')
 @app.route('/enumbers.html')
