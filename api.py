@@ -239,9 +239,9 @@ def update_enumbers_from_off_additives_logic():
     enumbers = load_enumbers()
     print(f'Updated {updated} entries with Open Food Facts additive data (including new and removed).')
     return updated
-
 # Endpoint to update enumbers.json with Open Food Facts data
 @app.route('/api/update_openfoodfacts', methods=['POST'])
+@check_editing_allowed()  # NB check for edit perms
 def update_openfoodfacts():
     global enumbers
     updated = 0
