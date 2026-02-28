@@ -1100,69 +1100,68 @@ function renderTable(filter="") {
   const tbody = document.getElementById('tbody');
   const resultsInfo = document.getElementById('results-info');
   
-  // 1. Maintain your skeleton loading effect
-  tbody.innerHTML = '<tr><td colspan="7" class="skeleton" style="height: 50px;"></td></tr>';
+  // Add skeleton loading effect
+  tbody.innerHTML = '<tr><td colspan="6" class="skeleton" style="height: 50px;"></td></tr>';
   
+  // Clear existing rows after brief delay for loading effect
   setTimeout(() => {
     while (tbody.firstChild) {
       tbody.removeChild(tbody.firstChild);
     }
   
-    const safeFilter = filter.toLowerCase().trim();
-    const selectedCategory = document.getElementById('category-filter').value;
+  // Security: Escape filter input
+  const safeFilter = filter.toLowerCase().trim();
   
-    // 2. ENHANCED FILTER: Now searches brands too
-    let filteredEntries = enumbers.filter(e => {
-      const matchText = e.code.toLowerCase().includes(safeFilter) || 
-                        e.name.toLowerCase().includes(safeFilter);
-      
-      // Check if deep scan product data matches the search
-      const matchBrand = e.openfoodfacts && e.openfoodfacts.brands && 
-                         e.openfoodfacts.brands.toLowerCase().includes(safeFilter);
-                         
-      return matchText || matchBrand;
-    });
+  // Get selected category
+  const selectedCategory = document.getElementById('category-filter').value;
   
-    if (selectedCategory) {
-      filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
-    }
+  // Filter entries
+  let filteredEntries = enumbers.filter(e => 
+    e.code.toLowerCase().includes(safeFilter) || 
+    e.name.toLowerCase().includes(safeFilter)
+  );
   
-    // 3. Sorting (Keep your existing numerical/alphabetical logic)
-    const sortedEntries = filteredEntries.sort((a, b) => {
-      if (currentSort === 'code') {
-        const aNum = parseInt(a.code.replace(/[^0-9]/g, '')) || 0;
-        const bNum = parseInt(b.code.replace(/[^0-9]/g, '')) || 0;
-        return aNum - bNum;
-      } else {
-        return a.name.localeCompare(b.name);
-      }
-    });
+  // Apply category filter if selected
+  if (selectedCategory) {
+    filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
+  }
   
-    const limitedEntries = sortedEntries.slice(0, 500);
-  
-    // 4. Update Results Info
-    if (safeFilter || selectedCategory) {
-      const totalResults = filteredEntries.length;
-      resultsInfo.textContent = `Found ${totalResults} result${totalResults !== 1 ? 's' : ''}${selectedCategory ? ` in ${selectedCategory}` : ''}`;
-      resultsInfo.classList.add('visible');
+  // Sort entries
+  const sortedEntries = filteredEntries.sort((a, b) => {
+    if (currentSort === 'code') {
+      // Sort by E-number (numerical order)
+      const aNum = parseInt(a.code.replace(/[^0-9]/g, ''));
+      const bNum = parseInt(b.code.replace(/[^0-9]/g, ''));
+      return aNum - bNum;
     } else {
-      resultsInfo.classList.remove('visible');
+      // Sort by name (alphabetical)
+      return a.name.localeCompare(b.name);
     }
+  });
   
-    // 5. Efficient Rendering with Document Fragment
-    const fragment = document.createDocumentFragment();
-    limitedEntries.forEach((entry, index) => {
-      const row = createTableRow(entry); // Ensure your createTableRow is updated!
-      row.style.animationDelay = `${index * 0.05}s`;
-      fragment.appendChild(row);
-    });
+  // Limit results for performance
+  const limitedEntries = sortedEntries.slice(0, 500);
+  
+  // Show results count
+  if (safeFilter || selectedCategory) {
+    const totalResults = filteredEntries.length;
+    const shownResults = limitedEntries.length;
+    let message = `Found ${totalResults} result${totalResults !== 1 ? 's' : ''}`;
     
-    tbody.appendChild(fragment);
+    if (selectedCategory) {
+      message += ` in category "${selectedCategory}"`;
+    }
     
-    if (typeof updateChart === 'function') updateChart();
-  }, 300);
-}
-
+    if (totalResults > 500) {
+      message += ` (showing first 500)`;
+    }
+    resultsInfo.textContent = message;
+    resultsInfo.classList.add('visible');
+  } else {
+    resultsInfo.classList.remove('visible');
+  }
+  
+  
   
   // Create and append rows with staggered animation
   const fragment = document.createDocumentFragment();
