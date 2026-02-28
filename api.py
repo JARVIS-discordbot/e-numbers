@@ -9,7 +9,7 @@ import re
 import html
 import bleach
 from werkzeug.middleware.proxy_fix import ProxyFix
-
+from functools import wraps  
 app = Flask(__name__)
 
 # Security: Apply ProxyFix if behind a reverse proxy
@@ -110,8 +110,15 @@ def validate_json_input(data, required_fields):
     return True, None
 
 def check_editing_allowed():
-    if not EDITING_ALLOWED:
-        return jsonify({'error': 'Editing is disabled on this server.'}), 403
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # This part only runs when a user actually hits the URL
+            if not EDITING_ALLOWED:
+                return jsonify({'error': 'Editing is disabled on this server.'}), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 def load_enumbers():
     try:
