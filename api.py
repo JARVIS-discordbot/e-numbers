@@ -223,9 +223,11 @@ def update_enumbers_from_off_additives_logic():
 
 @app.route('/api/enumbers', methods=['GET'])
 def get_enumbers():
-    query = request.args.get('q', '').lower()
+    query = request.args.get('q', '').strip().lower()
+    limit = request.args.get('limit', type=int, default=1000)
+    limit = min(max(1, limit), 5000)  # clamp 1-5000
     results = [e for e in enumbers if query in e['code'].lower() or query in e['name'].lower()] if query else enumbers
-    return jsonify(results[:1000])
+    return jsonify(results[:limit])
 
 @app.route('/')
 @app.route('/enumbers.html')

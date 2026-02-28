@@ -357,6 +357,20 @@
     font-size: 0.9rem;
   }
 
+  .removed-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    background: var(--error-bg);
+    color: var(--error-text);
+    font-weight: 500;
+  }
+
+  tr.removed-entry {
+    opacity: 0.9;
+  }
+
   /* Mobile Responsiveness */
   @media (max-width: 768px) {
     body {
@@ -890,6 +904,7 @@ let searchTimeout;
 let currentSort = 'code';
 let categoryChart = null;
 let chartsVisible = true;
+let apiAvailable = false;  // true when data came from API (supports server-side search)
 
 // E-number category mapping
 function getCategory(code) {
@@ -963,24 +978,32 @@ function getSafetyLevel(code) {
 function createTableRow(entry) {
   const row = document.createElement('tr');
   row.style.animation = 'fadeIn 0.5s ease-in-out';
-  
+  if (entry.removed) row.classList.add('removed-entry');
+
   // E-Number cell with safety indicator
   const codeCell = document.createElement('td');
   codeCell.className = 'e-number';
-  
+
   const safetyIndicator = document.createElement('span');
   const safetyLevel = getSafetyLevel(entry.code);
   safetyIndicator.className = `visual-indicator ${safetyLevel}`;
   safetyIndicator.title = `Safety level: ${safetyLevel}`;
-  
+
   codeCell.appendChild(safetyIndicator);
-  codeCell.appendChild(document.createTextNode(entry.code));
+  codeCell.appendChild(document.createTextNode(entry.code || ''));
+  if (entry.removed) {
+    const badge = document.createElement('span');
+    badge.className = 'removed-badge';
+    badge.textContent = 'Removed';
+    badge.title = 'No longer in official Open Food Facts additive list';
+    codeCell.appendChild(badge);
+  }
   row.appendChild(codeCell);
   
   // Name cell
   const nameCell = document.createElement('td');
   nameCell.className = 'name';
-  nameCell.textContent = entry.name;
+  nameCell.textContent = entry.name || '';
   row.appendChild(nameCell);
   
   // Category cell
@@ -992,19 +1015,20 @@ function createTableRow(entry) {
 
 
   
-  // Open Food Facts cell
+  // Open Food Facts cell - use openfoodfacts_additive (additive metadata), not openfoodfacts (product data)
   const offCell = document.createElement('td');
-  if (entry.openfoodfacts_additive && entry.openfoodfacts_additive.url && isValidUrl(entry.openfoodfacts_additive.url)) {
+  const offAdditive = entry.openfoodfacts_additive;
+  if (offAdditive?.url && isValidUrl(offAdditive.url)) {
     const offLink = document.createElement('a');
-    offLink.href = entry.openfoodfacts_additive.url;
-    offLink.textContent = entry.openfoodfacts_additive.name || 'Open Food Facts';
+    offLink.href = offAdditive.url;
+    offLink.textContent = offAdditive.name || 'Open Food Facts';
     offLink.target = '_blank';
     offLink.rel = 'noopener noreferrer'; // Security: prevent window.opener access
     offCell.appendChild(offLink);
-  } else if (entry.openfoodfacts_url && isValidUrl(entry.openfoodfacts_url)) {
+  } else if (entry.openfoodfacts?.link && isValidUrl(entry.openfoodfacts.link)) {
     const offLink = document.createElement('a');
-    offLink.href = entry.openfoodfacts_url;
-    offLink.textContent = 'Open Food Facts (generic)';
+    offLink.href = entry.openfoodfacts.link;
+    offLink.textContent = 'Open Food Facts (product)';
     offLink.target = '_blank';
     offLink.rel = 'noopener noreferrer';
     offCell.appendChild(offLink);
@@ -1018,12 +1042,10 @@ function createTableRow(entry) {
   
   // Wikidata cell
   const wikiCell = document.createElement('td');
-  if (entry.openfoodfacts_additive && 
-      entry.openfoodfacts_additive.sameAs && 
-      entry.openfoodfacts_additive.sameAs.length > 0 &&
-      isValidUrl(entry.openfoodfacts_additive.sameAs[0])) {
+  const wikiUrl = offAdditive?.sameAs?.[0];
+  if (wikiUrl && isValidUrl(wikiUrl)) {
     const wikiLink = document.createElement('a');
-    wikiLink.href = entry.openfoodfacts_additive.sameAs[0];
+    wikiLink.href = wikiUrl;
     wikiLink.textContent = 'Wikidata';
     wikiLink.target = '_blank';
     wikiLink.rel = 'noopener noreferrer';
@@ -1039,8 +1061,8 @@ function createTableRow(entry) {
   // Research cell (PubMed)
   const researchCell = document.createElement('td');
   
-  // Check if this is a valid E-number for searching
-  const isValidENumber = /^E\d{1,4}$/.test(entry.code);
+  // Check if this is a valid E-number for searching (e.g. E300, E472a)
+  const isValidENumber = /^E\d{1,4}[A-Za-z]?$/.test((entry.code || '').trim());
   
   if (isValidENumber && entry.name && entry.name.trim() !== '') {
     const researchLink = document.createElement('a');
@@ -1117,8 +1139,8 @@ function renderTable(filter="") {
   
   // Filter entries
   let filteredEntries = enumbers.filter(e => 
-    e.code.toLowerCase().includes(safeFilter) || 
-    e.name.toLowerCase().includes(safeFilter)
+    (e.code || '').toLowerCase().includes(safeFilter) || 
+    (e.name || '').toLowerCase().includes(safeFilter)
   );
   
   // Apply category filter if selected
@@ -1184,23 +1206,39 @@ function renderTable(filter="") {
 // Security: Debounced search to prevent excessive API calls
 document.getElementById('search').addEventListener('input', function(e) {
   clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    const query = e.target.value;
+  searchTimeout = setTimeout(async () => {
+    const query = e.target.value.trim();
     // Security: Limit input length
-    if (query.length > 100) {
-      e.target.value = query.substring(0, 100);
+    if (e.target.value.length > 100) {
+      e.target.value = e.target.value.substring(0, 100);
       return;
     }
     
     // Show/hide clear button
     const clearButton = document.getElementById('clear-search');
-    if (query.length > 0) {
+    if (e.target.value.length > 0) {
       clearButton.classList.add('visible');
     } else {
       clearButton.classList.remove('visible');
     }
     
-    renderTable(query);
+    // Use API search when available (server-side filtering)
+    if (apiAvailable) {
+      try {
+        showLoading();
+        const data = await loadData(query, 500);
+        enumbers = data;
+        renderTable('');  // no client filter - data already filtered by API
+        updateChart();
+      } catch (err) {
+        console.warn('API search failed, using client-side filter:', err);
+        renderTable(query);  // fallback to client-side filter
+      } finally {
+        hideLoading();
+      }
+    } else {
+      renderTable(query);  // local JSON mode - client-side filter only
+    }
   }, 300); // 300ms debounce
 });
 
@@ -1216,11 +1254,24 @@ document.getElementById('category-filter').addEventListener('change', function(e
 });
 
 // Clear search button handler
-document.getElementById('clear-search').addEventListener('click', function() {
+document.getElementById('clear-search').addEventListener('click', async function() {
   document.getElementById('search').value = '';
   document.getElementById('category-filter').value = '';
   document.getElementById('clear-search').classList.remove('visible');
-  renderTable();
+  if (apiAvailable) {
+    try {
+      showLoading();
+      enumbers = await loadData('', 1000);
+      renderTable('');
+      updateChart();
+    } catch (err) {
+      renderTable('');
+    } finally {
+      hideLoading();
+    }
+  } else {
+    renderTable();
+  }
 });
 
 // Keyboard shortcuts and navigation
@@ -1238,7 +1289,15 @@ document.addEventListener('keydown', function(e) {
       searchInput.value = '';
       document.getElementById('category-filter').value = '';
       document.getElementById('clear-search').classList.remove('visible');
-      renderTable();
+      if (apiAvailable) {
+        loadData('', 1000).then(data => {
+          enumbers = data;
+          renderTable('');
+          updateChart();
+        }).catch(() => renderTable(''));
+      } else {
+        renderTable();
+      }
     }
   }
   
@@ -1421,8 +1480,8 @@ function updateChart() {
   const selectedCategory = document.getElementById('category-filter').value;
   
   let filteredEntries = enumbers.filter(e => 
-    e.code.toLowerCase().includes(currentFilter) || 
-    e.name.toLowerCase().includes(currentFilter)
+    (e.code || '').toLowerCase().includes(currentFilter) || 
+    (e.name || '').toLowerCase().includes(currentFilter)
   );
   
   if (selectedCategory) {
@@ -1471,8 +1530,8 @@ function generateCSV() {
   const selectedCategory = document.getElementById('category-filter').value;
   
   let filteredEntries = enumbers.filter(e => 
-    e.code.toLowerCase().includes(currentFilter) || 
-    e.name.toLowerCase().includes(currentFilter)
+    (e.code || '').toLowerCase().includes(currentFilter) || 
+    (e.name || '').toLowerCase().includes(currentFilter)
   );
   
   if (selectedCategory) {
@@ -1481,12 +1540,12 @@ function generateCSV() {
   
   filteredEntries.forEach(entry => {
     const category = getCategory(entry.code);
-    const offUrl = entry.openfoodfacts_additive?.url || '';
+    const offUrl = entry.openfoodfacts_additive?.url || entry.openfoodfacts?.link || '';
     const wikiUrl = entry.openfoodfacts_additive?.sameAs?.[0] || '';
     
     const row = [
-      `"${entry.code}"`,
-      `"${entry.name.replace(/"/g, '""')}"`,
+      `"${(entry.code || '').replace(/"/g, '""')}"`,
+      `"${(entry.name || '').replace(/"/g, '""')}"`,
       `"${category}"`,
       `"${offUrl}"`,
       `"${wikiUrl}"`
@@ -1550,43 +1609,51 @@ function fetchWithTimeout(url, options = {}) {
 }
 
 // Load data from API or fallback to local JSON
-showLoading();
+// query: optional search term for server-side filtering when API is used
+// limit: max results (default 1000 for initial, 500 for search)
+async function loadData(query = '', limit = 1000) {
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  if (limit) params.set('limit', limit);
+  const queryString = params.toString();
+  const apiUrl = '/api/enumbers' + (queryString ? '?' + queryString : '');
 
-async function loadData() {
   try {
-    // First try to load from Flask API
-    const response = await fetchWithTimeout('/api/enumbers');
+    const response = await fetchWithTimeout(apiUrl);
     if (response.ok) {
       const data = await response.json();
       if (Array.isArray(data)) {
+        apiAvailable = true;
         return data;
       }
     }
     throw new Error('API not available');
   } catch (error) {
-    console.log('API not available, loading from local JSON file');
-    // Fallback to local JSON file
-    const response = await fetchWithTimeout('./enumbers.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!apiAvailable) {
+      // Only fallback to JSON on initial load (apiAvailable not yet set)
+      console.log('API not available, loading from local JSON file');
+      const response = await fetchWithTimeout('./enumbers.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        apiAvailable = false;
+        return data;
+      }
     }
-    const data = await response.json();
-    if (Array.isArray(data)) {
-      return data;
-    }
-    throw new Error('Invalid data format received');
+    throw new Error(apiAvailable ? 'Search failed' : 'Invalid data format received');
   }
 }
 
+// Initial load
+showLoading();
 loadData()
   .then(data => {
     enumbers = data;
     renderTable();
     hideError();
-    // Initialize charts after data is loaded
-    setTimeout(() => {
-      updateChart();
-    }, 100);
+    setTimeout(() => updateChart(), 100);
   })
   .catch(error => {
     console.error('Error loading E-numbers:', error);
