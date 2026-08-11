@@ -247,6 +247,17 @@
   .results-info.visible {
     display: block;
   }
+
+  .sync-info {
+    margin-bottom: 1.5rem;
+    padding: 0.85rem 1.1rem;
+    background: var(--table-header-bg);
+    color: var(--text-color);
+    border: 1px solid var(--table-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    box-shadow: var(--shadow);
+  }
   
   .error { 
     color: var(--error-text); 
@@ -497,6 +508,7 @@
     .theme-toggle,
     #export-csv,
     .results-info,
+    #sync-info,
     #error-container,
     #loading,
     #chart-container {
@@ -865,6 +877,7 @@
   </div>
 
   <div id="results-info" class="results-info" role="status" aria-live="polite"></div>
+  <div id="sync-info" class="sync-info" role="status" aria-live="polite">Sync status: checking...</div>
   <div id="error-container" role="alert" aria-live="assertive"></div>
   <div id="loading" class="loading" style="display:none;" role="status" aria-live="polite">Loading...</div>
 
@@ -1608,6 +1621,41 @@ function fetchWithTimeout(url, options = {}) {
   });
 }
 
+function formatTimestampForDisplay(isoTimestamp) {
+  if (!isoTimestamp) return 'Not yet run';
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  return date.toLocaleString();
+}
+
+async function loadSyncStatus() {
+  const syncInfo = document.getElementById('sync-info');
+  if (!syncInfo) return;
+
+  try {
+    const response = await fetchWithTimeout('/api/update_status');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const status = await response.json();
+    const lastRun = formatTimestampForDisplay(status.last_off_sync_completed);
+    const nextDue = formatTimestampForDisplay(status.next_off_sync_due);
+
+    let message = `Open Food Facts sync: last run ${lastRun}. Next due ${nextDue}.`;
+
+    if (status.last_off_sync_success === false && status.last_off_sync_error) {
+      message += ` Last run failed: ${status.last_off_sync_error}`;
+    } else if (status.last_off_sync_success === true) {
+      message += ` Last run matched ${status.last_off_sync_updated_count || 0} additives.`;
+    }
+
+    syncInfo.textContent = message;
+  } catch (error) {
+    syncInfo.textContent = 'Open Food Facts sync status is currently unavailable.';
+  }
+}
+
 // Load data from API or fallback to local JSON
 // query: optional search term for server-side filtering when API is used
 // limit: max results (default 1000 for initial, 500 for search)
@@ -1648,6 +1696,8 @@ async function loadData(query = '', limit = 1000) {
 
 // Initial load
 showLoading();
+loadSyncStatus();
+setInterval(loadSyncStatus, 60000);
 loadData()
   .then(data => {
     enumbers = data;

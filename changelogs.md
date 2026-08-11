@@ -105,4 +105,3 @@ Keyboard shortcuts:
 
 ---
 
-**The application now offers a robust, accessible, and visually engaging experience with improved data visualization, modern design, and a smoother developer workflow.**

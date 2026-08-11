@@ -24,7 +24,12 @@ task_status = {
     "is_running": False,
     "current": 0,
     "total": 0,
-    "last_completed": None
+    "last_completed": None,
+    "last_off_sync_started": None,
+    "last_off_sync_completed": None,
+    "last_off_sync_success": None,
+    "last_off_sync_updated_count": 0,
+    "last_off_sync_error": None
 }
 
 # Security: Configure CORS properly
@@ -139,7 +144,10 @@ def run_deep_scan():
 
 @app.route('/api/update_status', methods=['GET'])
 def get_status():
-    return jsonify(task_status)
+    status = dict(task_status)
+    job = scheduler.get_job('off-additives-sync')
+    status['next_off_sync_due'] = job.next_run_time.isoformat() if job and job.next_run_time else None
+    return jsonify(status)
 
 @app.route('/api/update_openfoodfacts', methods=['POST'])
 @check_editing_allowed
@@ -258,11 +266,19 @@ def _fetch_off_additives():
         return []
 
 def update_enumbers_from_off_additives_logic():
-    global enumbers
+    global enumbers, task_status
     print("Fetching master additive list from OFF...")
+    task_status["last_off_sync_started"] = datetime.now().isoformat()
+    task_status["last_off_sync_error"] = None
     additives = _fetch_off_additives()
     if not additives:
-        print("Error fetching OFF additives from both primary and fallback sources.")
+        error_message = "Error fetching OFF additives from both primary and fallback sources."
+        task_status["last_off_sync_completed"] = datetime.now().isoformat()
+        task_status["last_off_sync_success"] = False
+        task_status["last_off_sync_updated_count"] = 0
+        task_status["last_off_sync_error"] = error_message
+        task_status["last_completed"] = task_status["last_off_sync_completed"]
+        print(error_message)
         return 0
 
     # 1. Build map of E-Codes from Open Food Facts (id + name, normalize case)
@@ -310,6 +326,11 @@ def update_enumbers_from_off_additives_logic():
             entry['removed'] = True
 
     save_enumbers(enumbers)
+    task_status["last_off_sync_completed"] = datetime.now().isoformat()
+    task_status["last_off_sync_success"] = True
+    task_status["last_off_sync_updated_count"] = updated
+    task_status["last_off_sync_error"] = None
+    task_status["last_completed"] = task_status["last_off_sync_completed"]
     print(f"Sync complete. Matched {updated} official E-numbers.")
     return updated
 
@@ -330,7 +351,7 @@ def index():
 
 enumbers = load_enumbers()
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_enumbers_from_off_additives_logic, 'interval', days=1)
+scheduler.add_job(update_enumbers_from_off_additives_logic, 'interval', days=1, id='off-additives-sync')
 scheduler.start()
 
 if __name__ == '__main__':
