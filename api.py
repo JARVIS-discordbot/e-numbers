@@ -206,8 +206,8 @@ def _extract_ecodes_from_off_tag(add):
     codes = set()
     tag_id = add.get('id', '')
 
-    # 1. Tag id: try to extract canonical numeric portion (handles e1414, e14xx, e472a)
-    m = re.search(r'e(\d+)([a-z]{0,2})?(?:-|$)', tag_id, re.I)
+    # 1. Tag id: try to extract canonical numeric portion (handles e1414, e14xx, e472a, e160bii)
+    m = re.search(r'e(\d+)([a-z]{0,4})?(?:-|$)', tag_id, re.I)
     if m:
         digits = m.group(1)
         suffix = (m.group(2) or '').upper()
@@ -219,9 +219,9 @@ def _extract_ecodes_from_off_tag(add):
         else:
             codes.add('E' + digits)
 
-    # 2. Parse the human-readable name for explicit codes like "E472a" or "E 472a"
+    # 2. Parse the human-readable name for explicit codes like "E472a", "E 472a", "E160bii"
     raw_name = add.get('name', '') or ''
-    for m in re.finditer(r'E\s*(\d{1,4})([A-Za-z]{0,2})', raw_name, re.I):
+    for m in re.finditer(r'E\s*(\d{1,4})([A-Za-z]{0,4})', raw_name, re.I):
         digits = m.group(1)
         suffix = (m.group(2) or '').upper()
         if 'X' in suffix:
