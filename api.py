@@ -161,15 +161,33 @@ def update_enumbers_from_off_additives():
 def _extract_ecodes_from_off_tag(add):
     """Extract E-code(s) from OFF tag. Uses 'id' (canonical e.g. en:e472a-...) and 'name'."""
     codes = set()
-    # 1. Tag id is canonical: "en:e472a-acetic-acid-esters..." -> E472A
     tag_id = add.get('id', '')
-    m = re.search(r'e(\d+[a-z]?)(?:-|$)', tag_id, re.I)
+
+    # 1. Tag id: try to extract canonical numeric portion (handles e1414, e14xx, e472a)
+    m = re.search(r'e(\d+)([a-z]{0,2})?(?:-|$)', tag_id, re.I)
     if m:
-        codes.add('E' + m.group(1).upper())
-    # 2. Also parse name: "E472a - Acetic acid esters" or "E 472a"
-    raw_name = add.get('name', '').upper().replace(' ', '')
-    for m in re.finditer(r'E(\d+)([A-Z])?', raw_name):
-        codes.add('E' + m.group(1) + (m.group(2) or ''))
+        digits = m.group(1)
+        suffix = (m.group(2) or '').upper()
+        # If suffix contains 'X' (e.g. 'XX'), treat as a range prefix (E14 -> matches E1400-E1499)
+        if 'X' in suffix:
+            codes.add('E' + digits + 'XX')
+        elif suffix:
+            codes.add('E' + digits + suffix)
+        else:
+            codes.add('E' + digits)
+
+    # 2. Parse the human-readable name for explicit codes like "E472a" or "E 472a"
+    raw_name = add.get('name', '') or ''
+    for m in re.finditer(r'E\s*(\d{1,4})([A-Za-z]{0,2})', raw_name, re.I):
+        digits = m.group(1)
+        suffix = (m.group(2) or '').upper()
+        if 'X' in suffix:
+            codes.add('E' + digits + 'XX')
+        elif suffix:
+            codes.add('E' + digits + suffix)
+        else:
+            codes.add('E' + digits)
+
     return codes
 
 def update_enumbers_from_off_additives_logic():
@@ -191,23 +209,40 @@ def update_enumbers_from_off_additives_logic():
                 additive_dict[code.upper()] = add
 
     updated = 0
+    # Build a set of prefixes for range tags (e.g. E14XX -> prefix 'E14') to match local codes
+    range_prefixes = set()
+    for k in additive_dict.keys():
+        if k.endswith('XX'):
+            # store 'E14' for 'E14XX'
+            range_prefixes.add(k[:-2])
+
     # 2. Match your local list against the OFF map
     for entry in enumbers:
         code = entry.get('code', '').upper()
-        
+
+        matched = False
+        # 1) Exact match
         if code in additive_dict:
             add = additive_dict[code]
-            # Populate the gold-mine data!
+            matched = True
+        else:
+            # 2) Prefix match for range tags (E14XX should match E1414, E1420 etc.)
+            for prefix in range_prefixes:
+                if code.startswith(prefix):
+                    add = additive_dict.get(prefix + 'XX')
+                    if add:
+                        matched = True
+                        break
+
+        if matched:
             entry['openfoodfacts_additive'] = {
                 'name': add.get('name'),
                 'url': add.get('url'),
                 'sameAs': add.get('sameAs', [])
             }
-            # If it was marked 'removed' before, bring it back
             entry.pop('removed', None)
             updated += 1
         else:
-            # If it's truly not in the official list, mark it
             entry['removed'] = True
 
     save_enumbers(enumbers)
