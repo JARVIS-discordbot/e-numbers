@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # Global status tracker
-task_status = {
+TASK_STATUS_DEFAULTS = {
     "is_running": False,
     "current": 0,
     "total": 0,
@@ -31,6 +31,7 @@ task_status = {
     "last_off_sync_updated_count": 0,
     "last_off_sync_error": None
 }
+task_status = dict(TASK_STATUS_DEFAULTS)
 
 # Security: Configure CORS properly
 CORS(app, 
@@ -61,6 +62,7 @@ def add_security_headers(response):
     return response
 
 EN_FILE = 'enumbers.json'
+STATUS_FILE = 'sync_status.json'
 USER_AGENT = "ENumbersApp/1.0 (contact@example.com)"
 
 parser = argparse.ArgumentParser()
@@ -88,6 +90,37 @@ def check_editing_allowed(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def load_task_status():
+    if not os.path.exists(STATUS_FILE):
+        return dict(TASK_STATUS_DEFAULTS)
+    try:
+        with open(STATUS_FILE, encoding='utf-8') as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Error loading sync status: {e}")
+        return dict(TASK_STATUS_DEFAULTS)
+
+    if not isinstance(payload, dict):
+        print("Error loading sync status: invalid format")
+        return dict(TASK_STATUS_DEFAULTS)
+
+    merged = dict(TASK_STATUS_DEFAULTS)
+    for key in TASK_STATUS_DEFAULTS:
+        if key in payload:
+            merged[key] = payload[key]
+    return merged
+
+def save_task_status():
+    try:
+        temp_file = f"{STATUS_FILE}.tmp"
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(task_status, f, ensure_ascii=False, indent=2)
+        os.replace(temp_file, STATUS_FILE)
+    except OSError as e:
+        print(f"Error saving sync status: {e}")
+
+task_status = load_task_status()
+
 # --- Data Management ---
 
 def load_enumbers():
@@ -113,6 +146,7 @@ def run_deep_scan():
     task_status["is_running"] = True
     task_status["total"] = len(enumbers)
     task_status["current"] = 0
+    save_task_status()
     
     print(f"Starting Deep Scan of {task_status['total']} items...")
     
@@ -138,6 +172,7 @@ def run_deep_scan():
     save_enumbers(enumbers)
     task_status["is_running"] = False
     task_status["last_completed"] = datetime.now().isoformat()
+    save_task_status()
     print(f"Deep Scan Complete. Updated {updated_count} entries.")
 
 # --- Routes ---
@@ -270,6 +305,7 @@ def update_enumbers_from_off_additives_logic():
     print("Fetching master additive list from OFF...")
     task_status["last_off_sync_started"] = datetime.now().isoformat()
     task_status["last_off_sync_error"] = None
+    save_task_status()
     additives = _fetch_off_additives()
     if not additives:
         error_message = "Error fetching OFF additives from both primary and fallback sources."
@@ -278,6 +314,7 @@ def update_enumbers_from_off_additives_logic():
         task_status["last_off_sync_updated_count"] = 0
         task_status["last_off_sync_error"] = error_message
         task_status["last_completed"] = task_status["last_off_sync_completed"]
+        save_task_status()
         print(error_message)
         return 0
 
@@ -331,6 +368,7 @@ def update_enumbers_from_off_additives_logic():
     task_status["last_off_sync_updated_count"] = updated
     task_status["last_off_sync_error"] = None
     task_status["last_completed"] = task_status["last_off_sync_completed"]
+    save_task_status()
     print(f"Sync complete. Matched {updated} official E-numbers.")
     return updated
 
