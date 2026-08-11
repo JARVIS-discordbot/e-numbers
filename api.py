@@ -190,15 +190,79 @@ def _extract_ecodes_from_off_tag(add):
 
     return codes
 
+def _pick_off_name(name_field):
+    if isinstance(name_field, str):
+        return name_field
+    if isinstance(name_field, dict):
+        preferred_keys = ('en', 'xx')
+        for key in preferred_keys:
+            val = name_field.get(key)
+            if isinstance(val, str) and val.strip():
+                return val
+        for val in name_field.values():
+            if isinstance(val, str) and val.strip():
+                return val
+    return ''
+
+def _fetch_off_additives():
+    """Fetch additives from OFF facets endpoint, with fallback to static taxonomy."""
+    primary_url = "https://world.openfoodfacts.org/facets/additives.json"
+    fallback_url = "https://static.openfoodfacts.org/data/taxonomies/additives.json"
+
+    # Primary source: facets endpoint (already in the expected 'tags' format)
+    try:
+        response = requests.get(primary_url, headers={"User-Agent": USER_AGENT}, timeout=20)
+        response.raise_for_status()
+        payload = response.json()
+        tags = payload.get("tags", [])
+        if isinstance(tags, list) and tags:
+            print(f"Loaded {len(tags)} additives from OFF facets endpoint.")
+            return tags
+        print("OFF facets endpoint returned no tags. Falling back to static taxonomy...")
+    except Exception as e:
+        print(f"Primary OFF fetch failed: {e}. Falling back to static taxonomy...")
+
+    # Fallback source: static taxonomy (dict keyed by 'en:e1440', etc.)
+    try:
+        response = requests.get(fallback_url, headers={"User-Agent": USER_AGENT}, timeout=20)
+        response.raise_for_status()
+        payload = response.json()
+
+        if not isinstance(payload, dict):
+            print("Fallback OFF taxonomy response is not a dictionary.")
+            return []
+
+        additives = []
+        for raw_key, meta in payload.items():
+            if not isinstance(raw_key, str):
+                continue
+            if not isinstance(meta, dict):
+                meta = {}
+
+            tag_id = raw_key.split(':', 1)[1] if ':' in raw_key else raw_key
+            if not tag_id:
+                continue
+
+            name = _pick_off_name(meta.get('name')) or tag_id.upper()
+            additives.append({
+                'id': tag_id,
+                'name': name,
+                'url': f"https://world.openfoodfacts.org/facets/additives/{tag_id}",
+                'sameAs': meta.get('sameAs', []) if isinstance(meta.get('sameAs'), list) else []
+            })
+
+        print(f"Loaded {len(additives)} additives from OFF static taxonomy fallback.")
+        return additives
+    except Exception as e:
+        print(f"Fallback OFF fetch failed: {e}")
+        return []
+
 def update_enumbers_from_off_additives_logic():
     global enumbers
     print("Fetching master additive list from OFF...")
-    url = "https://world.openfoodfacts.org/facets/additives.json"
-    try:
-        response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
-        additives = response.json().get("tags", [])
-    except Exception as e:
-        print(f"Error fetching OFF additives: {e}")
+    additives = _fetch_off_additives()
+    if not additives:
+        print("Error fetching OFF additives from both primary and fallback sources.")
         return 0
 
     # 1. Build map of E-Codes from Open Food Facts (id + name, normalize case)
