@@ -2,6 +2,31 @@
 
 ## [released]
 
+### 🛠️ Fixes & Reliability (2026-08-11)
+- **Removed flag false-positives fixed (E14XX ranges)**:
+  - Improved Open Food Facts additive tag parsing to correctly handle range-style tags (like `E14XX`)
+  - Added prefix-based matching so `E14XX` maps to specific codes such as `E1414`, `E1420`, etc.
+  - Prevents incorrect `removed: true` flags for valid modified starch entries
+
+- **OFF sync fallback added**:
+  - Primary sync still uses `https://world.openfoodfacts.org/facets/additives.json`
+  - Added automatic fallback to `https://static.openfoodfacts.org/data/taxonomies/additives.json` when the primary endpoint is unavailable (e.g. HTTP 503)
+  - Normalizes fallback taxonomy format into the same additive shape used by sync logic
+
+- **Sync status visibility on main UI**:
+  - Added a live sync status panel showing:
+    - last Open Food Facts sync run time
+    - next scheduled sync time
+    - last result (matched count or failure message)
+  - Status auto-refreshes periodically from `/api/update_status`
+
+- **Sync status persistence across restarts**:
+  - Added persisted status storage (`sync_status.json`)
+  - `last_off_sync_*` fields now survive service restarts instead of resetting to `null`
+  - `/api/update_status` now includes scheduler-derived `next_off_sync_due`
+
+---
+
 ### 🚀 Features
 - **API Resilience**:  
   - Fixed API endpoint issue  
@@ -104,4 +129,3 @@ Keyboard shortcuts:
 - `Ctrl+D` – Toggle charts  
 
 ---
-
