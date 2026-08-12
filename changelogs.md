@@ -25,6 +25,11 @@
   - `last_off_sync_*` fields now survive service restarts instead of resetting to `null`
   - `/api/update_status` now includes scheduler-derived `next_off_sync_due`
 
+- **Removed-tag accuracy improvements**:
+  - `removed` is now only set when sync uses the **primary** OFF additives endpoint
+  - Fallback taxonomy syncs no longer aggressively mark unmatched additives as removed
+  - Added `removed_reason`, `removed_last_checked`, and `removed_source` metadata for traceability
+
 ---
 
 ### 🚀 Features

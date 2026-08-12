@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Number Admin Dashboard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #f7f7f9;
+      color: #222;
+    }
+    h1 { margin: 0 0 1rem 0; }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    input, select, button {
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #cfd3d8;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    button.warn {
+      background: #b02a37;
+    }
+    .status {
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      background: #e9f2ff;
+    }
+    .error {
+      background: #f8d7da;
+      color: #842029;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #e1e4e8;
+      padding: 0.6rem;
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+    th {
+      background: #f2f5f8;
+      position: sticky;
+      top: 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .badge.removed {
+      background: #b02a37;
+      color: #fff;
+    }
+    .badge.active {
+      background: #1e7e34;
+      color: #fff;
+    }
+    .actions {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .small {
+      color: #555;
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+    .code {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>E-Number Admin Dashboard</h1>
+  <p class="small">
+    This dashboard is the only supported way to set/remove the <code>removed</code> flag.
+  </p>
+
+  <div class="toolbar">
+    <input id="search" type="text" placeholder="Search code or name" maxlength="100">
+    <select id="removed-filter">
+      <option value="all">All</option>
+      <option value="removed">Removed only</option>
+      <option value="active">Not removed</option>
+    </select>
+    <button id="refresh-btn" class="secondary" type="button">Refresh</button>
+    <a href="/enumbers.html"><button class="secondary" type="button">Back to Main UI</button></a>
+  </div>
+
+  <div id="status" class="status">Loading...</div>
+
+  <table aria-label="Admin E-number table">
+    <thead>
+      <tr>
+        <th>E-Number</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Reason</th>
+        <th>Last Updated</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <script>
+    let allEnumbers = [];
+
+    function setStatus(message, isError = false) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = isError ? 'status error' : 'status';
+    }
+
+    async function fetchAdminData(query = '') {
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      params.set('limit', '5000');
+      const url = '/api/admin/enumbers?' + params.toString();
+      const response = await fetch(url);
+      if (!response.ok) {
+        let detail = '';
+        try {
+          const payload = await response.json();
+          detail = payload.error ? ` (${payload.error})` : '';
+        } catch (_) {}
+        throw new Error(`Failed to load admin data: ${response.status}${detail}`);
+      }
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Unexpected admin payload.');
+      }
+      return data;
+    }
+
+    function filteredData() {
+      const filter = document.getElementById('removed-filter').value;
+      if (filter === 'removed') return allEnumbers.filter(item => item.removed === true);
+      if (filter === 'active') return allEnumbers.filter(item => item.removed !== true);
+      return allEnumbers;
+    }
+
+    function renderRows() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      const rows = filteredData();
+
+      for (const entry of rows) {
+        const tr = document.createElement('tr');
+
+        const statusBadge = entry.removed
+          ? '<span class="badge removed">Removed</span>'
+          : '<span class="badge active">Active</span>';
+
+        tr.innerHTML = `
+          <td class="code">${entry.code || ''}</td>
+          <td>${entry.name || ''}</td>
+          <td>${statusBadge}</td>
+          <td class="small">${entry.removed_reason || '-'}</td>
+          <td class="small">${entry.removed_last_checked || '-'}</td>
+          <td>
+            <div class="actions">
+              <button type="button" data-action="remove" data-code="${entry.code || ''}" class="warn">Mark Removed</button>
+              <button type="button" data-action="restore" data-code="${entry.code || ''}" class="secondary">Clear Removed</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+      setStatus(`Loaded ${rows.length} entries.`);
+    }
+
+    async function setRemoved(code, removed) {
+      const payload = { removed: removed };
+      if (removed) {
+        const reason = prompt(`Reason for marking ${code} as removed (optional):`, '');
+        if (reason === null) return;
+        if (reason.trim()) payload.reason = reason.trim().slice(0, 500);
+      }
+
+      const response = await fetch(`/api/admin/enumbers/${encodeURIComponent(code)}/removed`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        let detail = '';
+        try {
+          const data = await response.json();
+          detail = data.error ? ` (${data.error})` : '';
+        } catch (_) {}
+        throw new Error(`Update failed for ${code}: ${response.status}${detail}`);
+      }
+    }
+
+    async function refresh() {
+      const search = document.getElementById('search').value.trim();
+      setStatus('Loading admin data...');
+      try {
+        allEnumbers = await fetchAdminData(search);
+        renderRows();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', refresh);
+    document.getElementById('removed-filter').addEventListener('change', renderRows);
+    document.getElementById('search').addEventListener('input', () => {
+      clearTimeout(window.__searchTimer);
+      window.__searchTimer = setTimeout(refresh, 250);
+    });
+
+    document.getElementById('tbody').addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+
+      const code = button.getAttribute('data-code');
+      const action = button.getAttribute('data-action');
+      if (!code || !action) return;
+
+      try {
+        setStatus(`Updating ${code}...`);
+        await setRemoved(code, action === 'remove');
+        await refresh();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    });
+
+    refresh();
+  </script>
+</body>
+</html>

@@ -29,7 +29,8 @@ TASK_STATUS_DEFAULTS = {
     "last_off_sync_completed": None,
     "last_off_sync_success": None,
     "last_off_sync_updated_count": 0,
-    "last_off_sync_error": None
+    "last_off_sync_error": None,
+    "last_off_sync_source": None
 }
 task_status = dict(TASK_STATUS_DEFAULTS)
 
@@ -139,6 +140,13 @@ def save_enumbers(data):
     except Exception as e:
         print(f"Error saving: {e}")
 
+def find_enumber_by_code(code):
+    normalized_code = sanitize_code(code)
+    for entry in enumbers:
+        if sanitize_code(entry.get('code', '')) == normalized_code:
+            return entry
+    return None
+
 # --- Background Task Logic ---
 
 def run_deep_scan():
@@ -201,6 +209,62 @@ def update_enumbers_from_off_additives():
     updated = update_enumbers_from_off_additives_logic()
     return jsonify({'message': f'Updated {updated} entries'})
 
+@app.route('/api/admin/enumbers', methods=['GET'])
+@check_editing_allowed
+def admin_get_enumbers():
+    query = sanitize_string(request.args.get('q', ''), 100).lower()
+    limit = request.args.get('limit', type=int, default=1000)
+    limit = min(max(1, limit), 5000)
+
+    if query:
+        results = [
+            e for e in enumbers
+            if query in (e.get('code', '').lower()) or query in (e.get('name', '').lower())
+        ]
+    else:
+        results = enumbers
+
+    return jsonify(results[:limit])
+
+@app.route('/api/admin/enumbers/<code>/removed', methods=['PUT'])
+@check_editing_allowed
+def admin_set_removed(code):
+    entry = find_enumber_by_code(code)
+    if not entry:
+        return jsonify({'error': 'E-number not found'}), 404
+
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid JSON payload'}), 400
+
+    if 'removed' not in data or not isinstance(data.get('removed'), bool):
+        return jsonify({'error': '"removed" must be a boolean'}), 400
+
+    removed = data.get('removed')
+    reason = sanitize_string(data.get('reason', ''), 500)
+    timestamp = datetime.now().isoformat()
+
+    if removed:
+        entry['removed'] = True
+        if reason:
+            entry['removed_reason'] = reason
+        else:
+            entry.pop('removed_reason', None)
+        entry['removed_last_checked'] = timestamp
+        entry['removed_source'] = 'admin'
+    else:
+        entry.pop('removed', None)
+        entry.pop('removed_reason', None)
+        entry.pop('removed_last_checked', None)
+        entry.pop('removed_source', None)
+
+    save_enumbers(enumbers)
+    return jsonify({
+        'message': 'Removed status updated',
+        'code': entry.get('code'),
+        'removed': bool(entry.get('removed'))
+    })
+
 def _extract_ecodes_from_off_tag(add):
     """Extract E-code(s) from OFF tag. Uses 'id' (canonical e.g. en:e472a-...) and 'name'."""
     codes = set()
@@ -260,7 +324,7 @@ def _fetch_off_additives():
         tags = payload.get("tags", [])
         if isinstance(tags, list) and tags:
             print(f"Loaded {len(tags)} additives from OFF facets endpoint.")
-            return tags
+            return tags, "primary"
         print("OFF facets endpoint returned no tags. Falling back to static taxonomy...")
     except Exception as e:
         print(f"Primary OFF fetch failed: {e}. Falling back to static taxonomy...")
@@ -295,10 +359,10 @@ def _fetch_off_additives():
             })
 
         print(f"Loaded {len(additives)} additives from OFF static taxonomy fallback.")
-        return additives
+        return additives, "fallback"
     except Exception as e:
         print(f"Fallback OFF fetch failed: {e}")
-        return []
+        return [], "none"
 
 def update_enumbers_from_off_additives_logic():
     global enumbers, task_status
@@ -306,7 +370,8 @@ def update_enumbers_from_off_additives_logic():
     task_status["last_off_sync_started"] = datetime.now().isoformat()
     task_status["last_off_sync_error"] = None
     save_task_status()
-    additives = _fetch_off_additives()
+    additives, sync_source = _fetch_off_additives()
+    task_status["last_off_sync_source"] = sync_source
     if not additives:
         error_message = "Error fetching OFF additives from both primary and fallback sources."
         task_status["last_off_sync_completed"] = datetime.now().isoformat()
@@ -357,10 +422,7 @@ def update_enumbers_from_off_additives_logic():
                 'url': add.get('url'),
                 'sameAs': add.get('sameAs', [])
             }
-            entry.pop('removed', None)
             updated += 1
-        else:
-            entry['removed'] = True
 
     save_enumbers(enumbers)
     task_status["last_off_sync_completed"] = datetime.now().isoformat()
@@ -384,6 +446,10 @@ def get_enumbers():
 @app.route('/enumbers.html')
 def index():
     return send_from_directory('.', 'enumbers.html')
+
+@app.route('/admin.html')
+def admin_dashboard():
+    return send_from_directory('.', 'admin.html')
 
 # --- Startup ---
 
