@@ -358,6 +358,16 @@
       text-decoration: none;
     }
 
+    .off-link {
+      border: 1px solid var(--link-color);
+      background: transparent;
+      white-space: nowrap;
+    }
+
+    .off-link:hover {
+      border-color: var(--link-hover);
+    }
+
     [data-theme="dark"] a:hover {
       background: rgba(77, 166, 255, 0.2);
     }
@@ -1089,13 +1099,17 @@
       const offAdditive = entry.openfoodfacts_additive;
       if (offAdditive?.url && isValidUrl(offAdditive.url)) {
         const offLink = document.createElement('a');
+        offLink.className = 'off-link';
         offLink.href = offAdditive.url;
-        offLink.textContent = offAdditive.name || 'Open Food Facts';
+        offLink.textContent = 'Open Food Facts';
+        offLink.title = offAdditive.name || 'Open additive on Open Food Facts';
+        offLink.setAttribute('aria-label', `Open ${offAdditive.name || entry.code} on Open Food Facts`);
         offLink.target = '_blank';
         offLink.rel = 'noopener noreferrer'; // Security: prevent window.opener access
         offCell.appendChild(offLink);
       } else if (entry.openfoodfacts?.link && isValidUrl(entry.openfoodfacts.link)) {
         const offLink = document.createElement('a');
+        offLink.className = 'off-link';
         offLink.href = entry.openfoodfacts.link;
         offLink.textContent = 'Open Food Facts (product)';
         offLink.target = '_blank';

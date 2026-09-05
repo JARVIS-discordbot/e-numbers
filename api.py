@@ -521,6 +521,12 @@ def update_enumbers_from_off_additives_logic():
                     'name': add.get('name'),
                     'source': add.get('eu_source')
                 }
+                existing_off = entry.get('openfoodfacts_additive')
+                entry['openfoodfacts_additive'] = {
+                    'name': existing_off.get('name') if isinstance(existing_off, dict) and existing_off.get('name') else add.get('name'),
+                    'url': existing_off.get('url') if isinstance(existing_off, dict) and existing_off.get('url') else f"https://world.openfoodfacts.org/facets/additives/{code.lower()}",
+                    'sameAs': existing_off.get('sameAs', []) if isinstance(existing_off, dict) else []
+                }
                 # EU authorization is authoritative; clear stale source-based flags.
                 if entry.get('removed_source') != 'admin':
                     entry.pop('removed', None)
