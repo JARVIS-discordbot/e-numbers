@@ -1719,10 +1719,10 @@
           : status.last_off_sync_success === false
             ? 'failed'
             : 'not used';
-        const offStatus = status.last_off_sync_source === 'primary' || status.last_off_sync_source === 'fallback'
+        const offStatus = status.last_off_enrichment_source === 'primary' || status.last_off_enrichment_source === 'fallback'
           ? 'success'
           : status.last_off_sync_source === 'eu-food-additives'
-            ? 'not used'
+            ? 'failed'
             : 'unknown';
 
         let message = `EU Food Additives: ${euStatus}. Open Food Facts: ${offStatus}. ${sourceName} sync: last run ${lastRun}. Next due ${nextDue}.`;

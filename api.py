@@ -32,7 +32,8 @@ TASK_STATUS_DEFAULTS = {
     "last_off_sync_success": None,
     "last_off_sync_updated_count": 0,
     "last_off_sync_error": None,
-    "last_off_sync_source": None
+    "last_off_sync_source": None,
+    "last_off_enrichment_source": None
 }
 task_status = dict(TASK_STATUS_DEFAULTS)
 
@@ -461,15 +462,16 @@ def _fetch_off_additives():
 
 def update_enumbers_from_off_additives_logic():
     global enumbers, task_status
-    print("Fetching master additive list from the EU Food Additives API...")
+    print("Fetching additive lists from the EU Food Additives API and Open Food Facts...")
     task_status["last_off_sync_started"] = datetime.now().isoformat()
     task_status["last_off_sync_error"] = None
     save_task_status()
-    additives, sync_source = _fetch_eu_additives()
-    if not additives:
-        print("Falling back to Open Food Facts additives...")
-        additives, sync_source = _fetch_off_additives()
+    eu_additives, eu_source = _fetch_eu_additives()
+    off_additives, off_source = _fetch_off_additives()
+    additives = eu_additives or off_additives
+    sync_source = "eu-food-additives" if eu_additives else off_source
     task_status["last_off_sync_source"] = sync_source
+    task_status["last_off_enrichment_source"] = off_source if eu_additives else None
     if not additives:
         error_message = "Error fetching EU Food Additives and Open Food Facts sources."
         task_status["last_off_sync_completed"] = datetime.now().isoformat()
@@ -481,12 +483,19 @@ def update_enumbers_from_off_additives_logic():
         print(error_message)
         return 0
 
-    # 1. Build a map of E-codes from the selected source.
-    additive_dict = {}
-    for add in additives:
+    # Build maps of E-codes from both sources.
+    eu_dict = {}
+    off_dict = {}
+    for add in eu_additives:
         for code in _extract_ecodes_from_off_tag(add):
             if code:
-                additive_dict[code.upper()] = add
+                eu_dict[code.upper()] = add
+    for add in off_additives:
+        for code in _extract_ecodes_from_off_tag(add):
+            if code:
+                off_dict[code.upper()] = add
+
+    additive_dict = eu_dict or off_dict
 
     updated = 0
     # Build a set of prefixes for range tags (e.g. E14XX -> prefix 'E14') to match local codes
@@ -521,6 +530,13 @@ def update_enumbers_from_off_additives_logic():
                     'name': add.get('name'),
                     'source': add.get('eu_source')
                 }
+                off_add = off_dict.get(code)
+                if off_add:
+                    entry['openfoodfacts_additive'] = {
+                        'name': off_add.get('name'),
+                        'url': off_add.get('url'),
+                        'sameAs': off_add.get('sameAs', [])
+                    }
                 existing_off = entry.get('openfoodfacts_additive')
                 entry['openfoodfacts_additive'] = {
                     'name': existing_off.get('name') if isinstance(existing_off, dict) and existing_off.get('name') else add.get('name'),
