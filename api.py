@@ -328,7 +328,7 @@ def _eu_records_from_payload(payload):
     if not isinstance(payload, dict):
         return []
 
-    for key in ('data', 'results', 'items', 'additives', 'records'):
+    for key in ('value', 'data', 'results', 'items', 'additives', 'records'):
         records = payload.get(key)
         if isinstance(records, list):
             return records
@@ -355,7 +355,8 @@ def _normalize_eu_additives(response):
         if not isinstance(record, dict):
             continue
         code = _find_record_value(record, (
-            'e_number', 'enumber', 'e_code', 'additive_code', 'code', 'number'
+            'e_number', 'enumber', 'e_code', 'additive_code', 'additive_e_code',
+            'code', 'number'
         ))
         if not re.search(r'\bE\s*\d{1,4}[A-Za-z]{0,4}\b', code, re.I):
             for value in record.values():
@@ -377,23 +378,29 @@ def _normalize_eu_additives(response):
     return additives
 
 def _fetch_eu_additives():
-    url = "https://api.datalake.sante.service.ec.europa.eu/food-additives/download"
+    url = "https://api.datalake.sante.service.ec.europa.eu/food-additives/food-additives-list"
+    headers = {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    all_additives = []
     try:
-        response = requests.get(
-            url,
-            params={'api-version': 'v2.0', 'format': 'json'},
-            headers={
-                'User-Agent': USER_AGENT,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            timeout=30
-        )
-        response.raise_for_status()
-        additives = _normalize_eu_additives(response)
-        if additives:
-            print(f"Loaded {len(additives)} additives from the EU Food Additives API.")
-            return additives, "eu-food-additives"
+        next_url = url
+        params = {'api-version': 'v2.0', 'format': 'json'}
+        for _ in range(100):
+            response = requests.get(next_url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            all_additives.extend(_normalize_eu_additives(response))
+            payload = response.json()
+            next_url = payload.get('nextLink') if isinstance(payload, dict) else None
+            if not next_url:
+                break
+            params = None
+
+        if all_additives:
+            print(f"Loaded {len(all_additives)} additives from the EU Food Additives API.")
+            return all_additives, "eu-food-additives"
         print("EU Food Additives API returned no usable additives.")
     except Exception as e:
         print(f"EU Food Additives fetch failed: {e}")

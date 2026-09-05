@@ -4,6 +4,9 @@
 
 ### 📚 Data Sources (2026-09-05)
 - Added the EU Food Additives API as the primary source for E-number synchronization.
+- Updated the EU integration to use the `food-additives-list` endpoint with `format=json` and `api-version=v2.0`.
+- Added support for the EU response fields `additive_e_code` and `additive_name`.
+- Added pagination through the API's `nextLink`; the live dataset returned 412 records across 5 pages.
 - Open Food Facts remains available as a fallback source and for supplementary metadata.
 
 ### 🛠️ Fixes & Reliability (2026-08-11)
