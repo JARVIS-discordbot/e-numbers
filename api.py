@@ -535,6 +535,15 @@ def update_enumbers_from_off_additives_logic():
                 }
             updated += 1
 
+    if sync_source == 'eu-food-additives':
+        # EU data is authoritative; old source-based removal flags are stale.
+        for entry in enumbers:
+            if entry.get('removed_source') != 'admin':
+                entry.pop('removed', None)
+                entry.pop('removed_reason', None)
+                entry.pop('removed_last_checked', None)
+                entry.pop('removed_source', None)
+
     save_enumbers(enumbers)
     task_status["last_off_sync_completed"] = datetime.now().isoformat()
     task_status["last_off_sync_success"] = True
