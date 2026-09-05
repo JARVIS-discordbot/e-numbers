@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, abort, send_from_directory
 import json
 import os
 import requests
+import csv
+import io
 from apscheduler.schedulers.background import BackgroundScheduler
 import argparse
 from flask_cors import CORS
@@ -311,6 +313,88 @@ def _pick_off_name(name_field):
                 return val
     return ''
 
+def _find_record_value(record, names):
+    normalized = {re.sub(r'[^a-z0-9]', '', key.lower()): value
+                  for key, value in record.items()}
+    for name in names:
+        value = normalized.get(re.sub(r'[^a-z0-9]', '', name.lower()))
+        if isinstance(value, (str, int, float)) and str(value).strip():
+            return str(value).strip()
+    return ''
+
+def _eu_records_from_payload(payload):
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+
+    for key in ('data', 'results', 'items', 'additives', 'records'):
+        records = payload.get(key)
+        if isinstance(records, list):
+            return records
+
+    # Some exports use the E-number as the object key.
+    records = []
+    for key, value in payload.items():
+        if isinstance(value, dict):
+            record = dict(value)
+            record.setdefault('code', key)
+            records.append(record)
+    return records
+
+def _normalize_eu_additives(response):
+    try:
+        payload = response.json()
+        records = _eu_records_from_payload(payload)
+    except ValueError:
+        reader = csv.DictReader(io.StringIO(response.text))
+        records = list(reader)
+
+    additives = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        code = _find_record_value(record, (
+            'e_number', 'enumber', 'e_code', 'additive_code', 'code', 'number'
+        ))
+        if not re.search(r'\bE\s*\d{1,4}[A-Za-z]{0,4}\b', code, re.I):
+            for value in record.values():
+                if isinstance(value, str):
+                    match = re.search(r'\bE\s*\d{1,4}[A-Za-z]{0,4}\b', value, re.I)
+                    if match:
+                        code = match.group(0)
+                        break
+        name = _find_record_value(record, (
+            'name', 'additive_name', 'substance_name', 'denomination'
+        ))
+        if not code or not name:
+            continue
+        additives.append({
+            'id': code.replace(' ', '').lower(),
+            'name': name,
+            'eu_source': 'https://developer.datalake.sante.service.ec.europa.eu/api-details#api=294321de-6daf-480b-9c7a-b7b19eeff462'
+        })
+    return additives
+
+def _fetch_eu_additives():
+    url = "https://api.datalake.sante.service.ec.europa.eu/food-additives/download"
+    try:
+        response = requests.get(
+            url,
+            params={'api-version': 'v2.0', 'format': 'json'},
+            headers={'User-Agent': USER_AGENT, 'Accept': 'application/json'},
+            timeout=30
+        )
+        response.raise_for_status()
+        additives = _normalize_eu_additives(response)
+        if additives:
+            print(f"Loaded {len(additives)} additives from the EU Food Additives API.")
+            return additives, "eu-food-additives"
+        print("EU Food Additives API returned no usable additives.")
+    except Exception as e:
+        print(f"EU Food Additives fetch failed: {e}")
+    return [], "none"
+
 def _fetch_off_additives():
     """Fetch additives from OFF facets endpoint, with fallback to static taxonomy."""
     primary_url = "https://world.openfoodfacts.org/facets/additives.json"
@@ -366,14 +450,17 @@ def _fetch_off_additives():
 
 def update_enumbers_from_off_additives_logic():
     global enumbers, task_status
-    print("Fetching master additive list from OFF...")
+    print("Fetching master additive list from the EU Food Additives API...")
     task_status["last_off_sync_started"] = datetime.now().isoformat()
     task_status["last_off_sync_error"] = None
     save_task_status()
-    additives, sync_source = _fetch_off_additives()
+    additives, sync_source = _fetch_eu_additives()
+    if not additives:
+        print("Falling back to Open Food Facts additives...")
+        additives, sync_source = _fetch_off_additives()
     task_status["last_off_sync_source"] = sync_source
     if not additives:
-        error_message = "Error fetching OFF additives from both primary and fallback sources."
+        error_message = "Error fetching EU Food Additives and Open Food Facts sources."
         task_status["last_off_sync_completed"] = datetime.now().isoformat()
         task_status["last_off_sync_success"] = False
         task_status["last_off_sync_updated_count"] = 0
@@ -403,6 +490,7 @@ def update_enumbers_from_off_additives_logic():
         code = entry.get('code', '').upper()
 
         matched = False
+        add = None
         # 1) Exact match
         if code in additive_dict:
             add = additive_dict[code]
@@ -416,12 +504,18 @@ def update_enumbers_from_off_additives_logic():
                         matched = True
                         break
 
-        if matched:
-            entry['openfoodfacts_additive'] = {
-                'name': add.get('name'),
-                'url': add.get('url'),
-                'sameAs': add.get('sameAs', [])
-            }
+        if matched and add:
+            if sync_source == 'eu-food-additives':
+                entry['eu_additive'] = {
+                    'name': add.get('name'),
+                    'source': add.get('eu_source')
+                }
+            else:
+                entry['openfoodfacts_additive'] = {
+                    'name': add.get('name'),
+                    'url': add.get('url'),
+                    'sameAs': add.get('sameAs', [])
+                }
             updated += 1
 
     save_enumbers(enumbers)

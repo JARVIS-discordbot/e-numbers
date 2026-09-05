@@ -2,6 +2,10 @@
 
 ## [released]
 
+### 📚 Data Sources (2026-09-05)
+- Added the EU Food Additives API as the primary source for E-number synchronization.
+- Open Food Facts remains available as a fallback source and for supplementary metadata.
+
 ### 🛠️ Fixes & Reliability (2026-08-11)
 - **Removed flag false-positives fixed (E14XX ranges)**:
   - Improved Open Food Facts additive tag parsing to correctly handle range-style tags (like `E14XX`)
