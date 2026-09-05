@@ -382,7 +382,11 @@ def _fetch_eu_additives():
         response = requests.get(
             url,
             params={'api-version': 'v2.0', 'format': 'json'},
-            headers={'User-Agent': USER_AGENT, 'Accept': 'application/json'},
+            headers={
+                'User-Agent': USER_AGENT,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
             timeout=30
         )
         response.raise_for_status()
