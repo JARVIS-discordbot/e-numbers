@@ -470,7 +470,7 @@ def update_enumbers_from_off_additives_logic():
         print(error_message)
         return 0
 
-    # 1. Build map of E-Codes from Open Food Facts (id + name, normalize case)
+    # 1. Build a map of E-codes from the selected source.
     additive_dict = {}
     for add in additives:
         for code in _extract_ecodes_from_off_tag(add):
@@ -510,6 +510,12 @@ def update_enumbers_from_off_additives_logic():
                     'name': add.get('name'),
                     'source': add.get('eu_source')
                 }
+                # EU authorization is authoritative; clear stale source-based flags.
+                if entry.get('removed_source') != 'admin':
+                    entry.pop('removed', None)
+                    entry.pop('removed_reason', None)
+                    entry.pop('removed_last_checked', None)
+                    entry.pop('removed_source', None)
             else:
                 entry['openfoodfacts_additive'] = {
                     'name': add.get('name'),

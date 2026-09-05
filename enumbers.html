@@ -1,1717 +1,1787 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>E-Number Lookup</title>
 
   <!-- Favicon -->
-  <link 
-    rel="icon" 
-    type="image/gif" 
+  <link rel="icon" type="image/gif"
     href="https://cdn.discordapp.com/avatars/603939742316363778/a_06976bd73730bd53f7177099a1a1b588.gif">
 
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-DNS0C9K0YJ"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
     gtag('config', 'G-DNS0C9K0YJ');
   </script>
-<!-- Clean Chart.js import -->
-<script src="static/js/chart.umd.js"></script>
+  <!-- Clean Chart.js import -->
+  <script src="static/js/chart.umd.js"></script>
 
 
-<style>
-  /* Chart container styling */
-  #categoryChart {
-    width: 100%;
-    height: 400px;
-    min-height: 400px;
-  }
-</style>
-<script>
-  // Simple Chart.js loading check
-  (function() {
-    if (typeof Chart !== 'undefined') {
-      console.log('Chart.js loaded successfully from CDN');
-    } else {
-      console.error('Chart.js failed to load from CDN');
-    }
-  })();
-</script>
-<style>
-  :root {
-    --bg-color: #f8f9fa;
-    --text-color: #333;
-    --table-bg: white;
-    --table-border: #e9ecef;
-    --header-bg: #f8f9fa;
-    --input-bg: white;
-    --input-border: #dee2e6;
-    --error-bg: #f8d7da;
-    --error-border: #f5c6cb;
-    --error-text: #dc3545;
-    --loading-color: #6c757d;
-    --placeholder-color: #adb5bd;
-    --success-color: #28a745;
-    --info-color: #0d6efd;
-    --link-color: #0d6efd;
-    --link-hover: #0a58ca;
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  [data-theme="dark"] {
-    --bg-color: #1a1a1a;
-    --text-color: #e9ecef;
-    --table-bg: #2d2d2d;
-    --table-border: #404040;
-    --header-bg: #343a40;
-    --input-bg: #2d2d2d;
-    --input-border: #495057;
-    --error-bg: #3d1f1f;
-    --error-border: #5c2a2a;
-    --error-text: #ff6b6b;
-    --loading-color: #a0a0a0;
-    --placeholder-color: #6c757d;
-    --success-color: #4caf50;
-    --info-color: #2196f3;
-    --link-color: #4da6ff;
-    --link-hover: #66b3ff;
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  body { 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: var(--bg-color);
-    color: var(--text-color);
-    transition: background-color 0.3s ease, color 0.3s ease;
-    line-height: 1.6;
-    font-size: 14px;
-  }
-  
-  .container {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-  
-  h1 { 
-    margin: 0 0 2rem 0;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--text-color);
-    letter-spacing: -0.025em;
-  }
-  
-  .search-container {
-    display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-  }
-  
-  .search-input-group {
-    position: relative;
-    flex: 1;
-    min-width: 300px;
-    max-width: 600px;
-  }
-  
-  .search-input {
-    width: 100%;
-    padding: 1rem 3rem 1rem 1rem;
-    font-size: 1rem;
-    background: var(--input-bg);
-    color: var(--text-color);
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow);
-  }
-  
-  .search-input:focus {
-    outline: none;
-    border-color: var(--info-color);
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
-  }
-  
-  .search-input::placeholder {
-    color: var(--placeholder-color);
-  }
-  
-  .clear-search {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--placeholder-color);
-    cursor: pointer;
-    font-size: 1.25rem;
-    padding: 0.25rem;
-    border-radius: 50%;
-    transition: all 0.2s ease;
-    display: none;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .clear-search:hover {
-    background: var(--header-bg);
-    color: var(--text-color);
-  }
-  
-  .clear-search.visible {
-    display: flex;
-  }
-  
-  .controls-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  
-  .category-filter {
-    min-width: 200px;
-  }
-  
-  select {
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    background: var(--input-bg);
-    color: var(--text-color);
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    min-width: 160px;
-  }
-  
-  select:focus {
-    outline: none;
-    border-color: var(--info-color);
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
-  }
-  
-  .theme-toggle {
-    background: var(--input-bg);
-    color: var(--text-color);
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    box-shadow: var(--shadow);
-    font-weight: 500;
-  }
-
-  .theme-toggle:hover {
-    background: var(--header-bg);
-    border-color: var(--info-color);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
-  }
-  
-  .results-info {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.5rem;
-    background: var(--info-color);
-    color: white;
-    border-radius: 8px;
-    font-weight: 500;
-    display: none;
-    box-shadow: var(--shadow);
-    font-size: 0.95rem;
-  }
-  
-  .results-info.visible {
-    display: block;
-  }
-
-  .sync-info {
-    margin-bottom: 1.5rem;
-    padding: 0.85rem 1.1rem;
-    background: var(--table-header-bg);
-    color: var(--text-color);
-    border: 1px solid var(--table-border);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    box-shadow: var(--shadow);
-  }
-  
-  .error { 
-    color: var(--error-text); 
-    padding: 1rem 1.5rem; 
-    background: var(--error-bg); 
-    border: 1px solid var(--error-border); 
-    border-radius: 8px; 
-    margin-bottom: 1.5rem;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow);
-  }
-  
-  .loading { 
-    color: var(--loading-color); 
-    padding: 2rem; 
-    text-align: center;
-    transition: color 0.3s ease;
-    font-size: 1.1rem;
-  }
-
-  .table-container {
-    overflow-x: auto;
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    background: var(--table-bg);
-    border: 1px solid var(--table-border);
-  }
-  
-  table { 
-    border-collapse: collapse; 
-    width: 100%; 
-    background: var(--table-bg);
-    transition: background-color 0.3s ease;
-    min-width: 600px;
-    table-layout: auto;
-  }
-  
-  th, td { 
-    border-bottom: 1px solid var(--table-border); 
-    padding: 1rem 1.5rem; 
-    text-align: left;
-    transition: all 0.2s ease;
-    vertical-align: top;
-  }
-  
-  th { 
-    background: var(--header-bg);
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-color);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    border-bottom: 2px solid var(--table-border);
-  }
-  
-  tr:hover {
-    background: var(--header-bg);
-  }
-  
-  tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .e-number {
-    font-weight: 600;
-    color: var(--info-color);
-    font-family: 'Courier New', monospace;
-  }
-  
-  .name {
-    font-weight: 500;
-  }
-  
-  .category {
-    font-size: 0.85rem;
-    color: var(--text-color);
-    font-weight: 500;
-  }
-  
-
-  
-  a {
-    color: var(--link-color);
-    text-decoration: none;
-    transition: all 0.2s ease;
-    font-weight: 500;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    display: inline-block;
-  }
-
-  a:hover {
-    color: var(--link-hover);
-    background: rgba(13, 110, 253, 0.1);
-    text-decoration: none;
-  }
-
-  [data-theme="dark"] a:hover {
-    background: rgba(77, 166, 255, 0.2);
-  }
-  
-  .no-data {
-    color: var(--placeholder-color);
-    font-style: italic;
-    font-size: 0.9rem;
-  }
-
-  .removed-badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-    margin-left: 0.5rem;
-    background: var(--error-bg);
-    color: var(--error-text);
-    font-weight: 500;
-  }
-
-  tr.removed-entry {
-    opacity: 0.9;
-  }
-
-  /* Mobile Responsiveness */
-  @media (max-width: 768px) {
-    body {
-      font-size: 13px;
-    }
-    
-    .container {
-      padding: 1rem;
-    }
-    
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .search-container {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-    }
-    
-    .search-input-group {
-      min-width: auto;
-      max-width: none;
-    }
-    
-    .controls-group {
-      justify-content: space-between;
-    }
-    
-    select, .theme-toggle {
-      flex: 1;
-      min-width: 0;
-      padding: 0.75rem 1rem;
-    }
-    
-    .category-filter {
-      min-width: 0;
-    }
-    
-    .table-container {
-      margin: 0 -0.5rem;
-      border-radius: 8px;
-    }
-    
-    th, td {
-      padding: 0.75rem 1rem;
-      font-size: 0.9rem;
-    }
-    
-    .results-info {
-      margin: 0 -0.5rem 1rem -0.5rem;
-      border-radius: 8px;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .container {
-      padding: 0.75rem;
-    }
-    
-    .controls-group {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    
-    select, .theme-toggle {
+  <style>
+    /* Chart container styling */
+    #categoryChart {
       width: 100%;
+      height: 400px;
+      min-height: 400px;
     }
-    
-    
-  }
-  
-  /* Large screen optimizations */
-  @media (min-width: 1200px) {
-    .container {
-      max-width: none;
-      padding: 3rem;
+  </style>
+  <script>
+    // Simple Chart.js loading check
+    (function () {
+      if (typeof Chart !== 'undefined') {
+        console.log('Chart.js loaded successfully from CDN');
+      } else {
+        console.error('Chart.js failed to load from CDN');
+      }
+    })();
+  </script>
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --text-color: #333;
+      --table-bg: white;
+      --table-border: #e9ecef;
+      --header-bg: #f8f9fa;
+      --input-bg: white;
+      --input-border: #dee2e6;
+      --error-bg: #f8d7da;
+      --error-border: #f5c6cb;
+      --error-text: #dc3545;
+      --loading-color: #6c757d;
+      --placeholder-color: #adb5bd;
+      --success-color: #28a745;
+      --info-color: #0d6efd;
+      --link-color: #0d6efd;
+      --link-hover: #0a58ca;
+      --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    
-    .search-input-group {
-      max-width: 800px;
-    }
-    
-    table {
-      font-size: 1rem;
-    }
-    
-    th, td {
-      padding: 1.25rem 2rem;
-    }
-  }
-  
-  @media (min-width: 1600px) {
-    .container {
-      padding: 4rem;
-    }
-    
-    .search-input-group {
-      max-width: 1000px;
-    }
-  }
 
-  /* Print Styles */
-  @media print {
+    [data-theme="dark"] {
+      --bg-color: #1a1a1a;
+      --text-color: #e9ecef;
+      --table-bg: #2d2d2d;
+      --table-border: #404040;
+      --header-bg: #343a40;
+      --input-bg: #2d2d2d;
+      --input-border: #495057;
+      --error-bg: #3d1f1f;
+      --error-border: #5c2a2a;
+      --error-text: #ff6b6b;
+      --loading-color: #a0a0a0;
+      --placeholder-color: #6c757d;
+      --success-color: #4caf50;
+      --info-color: #2196f3;
+      --link-color: #4da6ff;
+      --link-hover: #66b3ff;
+      --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
     * {
-      background: white !important;
-      color: black !important;
-      box-shadow: none !important;
+      box-sizing: border-box;
     }
-    
+
     body {
-      font-size: 12pt;
-      line-height: 1.4;
-    }
-    
-    .container {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
       padding: 0;
-      max-width: none;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      line-height: 1.6;
+      font-size: 14px;
     }
-    
-    .search-container,
-    .controls-group,
-    .theme-toggle,
-    #export-csv,
-    .results-info,
-    #sync-info,
-    #error-container,
-    #loading,
-    #chart-container {
-      display: none !important;
+
+    .container {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
     }
-    
+
     h1 {
-      font-size: 18pt;
-      margin-bottom: 1rem;
-      page-break-after: avoid;
+      margin: 0 0 2rem 0;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-color);
+      letter-spacing: -0.025em;
     }
-    
-    .table-container {
+
+    .search-container {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .search-input-group {
+      position: relative;
+      flex: 1;
+      min-width: 300px;
+      max-width: 600px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 1rem 3rem 1rem 1rem;
+      font-size: 1rem;
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--info-color);
+      box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    }
+
+    .search-input::placeholder {
+      color: var(--placeholder-color);
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
       border: none;
-      box-shadow: none;
-      border-radius: 0;
+      color: var(--placeholder-color);
+      cursor: pointer;
+      font-size: 1.25rem;
+      padding: 0.25rem;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      display: none;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    
+
+    .clear-search:hover {
+      background: var(--header-bg);
+      color: var(--text-color);
+    }
+
+    .clear-search.visible {
+      display: flex;
+    }
+
+    .controls-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .category-filter {
+      min-width: 200px;
+    }
+
+    select {
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      min-width: 160px;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--info-color);
+      box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    }
+
+    .theme-toggle {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+      font-weight: 500;
+    }
+
+    .theme-toggle:hover {
+      background: var(--header-bg);
+      border-color: var(--info-color);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .results-info {
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.5rem;
+      background: var(--info-color);
+      color: white;
+      border-radius: 8px;
+      font-weight: 500;
+      display: none;
+      box-shadow: var(--shadow);
+      font-size: 0.95rem;
+    }
+
+    .results-info.visible {
+      display: block;
+    }
+
+    .sync-info {
+      margin-bottom: 1.5rem;
+      padding: 0.85rem 1.1rem;
+      background: var(--table-header-bg);
+      color: var(--text-color);
+      border: 1px solid var(--table-border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      box-shadow: var(--shadow);
+    }
+
+    .error {
+      color: var(--error-text);
+      padding: 1rem 1.5rem;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .loading {
+      color: var(--loading-color);
+      padding: 2rem;
+      text-align: center;
+      transition: color 0.3s ease;
+      font-size: 1.1rem;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      background: var(--table-bg);
+      border: 1px solid var(--table-border);
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
-      min-width: auto;
+      background: var(--table-bg);
+      transition: background-color 0.3s ease;
+      min-width: 600px;
+      table-layout: auto;
     }
-    
-    th, td {
-      border: 1px solid #000;
-      padding: 0.5rem;
-      font-size: 10pt;
-      page-break-inside: avoid;
+
+    th,
+    td {
+      border-bottom: 1px solid var(--table-border);
+      padding: 1rem 1.5rem;
+      text-align: left;
+      transition: all 0.2s ease;
+      vertical-align: top;
     }
-    
+
     th {
-      background: #f0f0f0 !important;
-      font-weight: bold;
+      background: var(--header-bg);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-color);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 2px solid var(--table-border);
     }
-    
-    tr {
-      page-break-inside: avoid;
+
+    tr:hover {
+      background: var(--header-bg);
     }
-    
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .e-number {
+      font-weight: 600;
+      color: var(--info-color);
+      font-family: 'Courier New', monospace;
+    }
+
+    .name {
+      font-weight: 500;
+    }
+
+    .category {
+      font-size: 0.85rem;
+      color: var(--text-color);
+      font-weight: 500;
+    }
+
+
+
     a {
-      text-decoration: underline;
-      color: black !important;
+      color: var(--link-color);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      display: inline-block;
     }
-    
-    a:after {
-      content: " (" attr(href) ")";
-      font-size: 9pt;
+
+    a:hover {
+      color: var(--link-hover);
+      background: rgba(13, 110, 253, 0.1);
+      text-decoration: none;
+    }
+
+    [data-theme="dark"] a:hover {
+      background: rgba(77, 166, 255, 0.2);
+    }
+
+    .no-data {
+      color: var(--placeholder-color);
       font-style: italic;
+      font-size: 0.9rem;
     }
-    
-    .print-header {
-      display: block !important;
-      text-align: center;
-      margin-bottom: 1rem;
-      font-size: 10pt;
+
+    .removed-badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      background: var(--error-bg);
+      color: var(--error-text);
+      font-weight: 500;
     }
-  }
 
-  /* Accessibility Improvements */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .skip-link {
-    position: absolute;
-    top: -40px;
-    left: 6px;
-    background: var(--info-color);
-    color: white;
-    padding: 8px;
-    text-decoration: none;
-    border-radius: 4px;
-    z-index: 1000;
-    transition: top 0.3s;
-  }
-
-  .skip-link:focus {
-    top: 6px;
-  }
-
-  /* Focus indicators */
-  button:focus,
-  input:focus,
-  select:focus,
-  a:focus {
-    outline: 2px solid var(--info-color);
-    outline-offset: 2px;
-  }
-
-  /* High contrast mode support */
-  @media (prefers-contrast: high) {
-    :root {
-      --text-color: #000;
-      --bg-color: #fff;
-      --table-border: #000;
-      --input-border: #000;
+    tr.removed-entry {
+      opacity: 0.9;
     }
-  }
 
-  /* Reduced motion support */
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
-  /* Enhanced visual elements */
-  .visual-indicator {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 0.5rem;
-    animation: pulse 2s infinite;
-  }
-
-  .safe { background: linear-gradient(135deg, #4ade80, #22c55e); }
-  .caution { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-  .warning { background: linear-gradient(135deg, #f87171, #ef4444); }
-  .unknown { background: linear-gradient(135deg, #94a3b8, #64748b); }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.1); }
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes shimmer {
-    0% { background-position: -200px 0; }
-    100% { background-position: calc(200px + 100%) 0; }
-  }
-
-  /* Enhanced buttons with gradients */
-  .enhanced-button {
-    background: linear-gradient(135deg, var(--info-color), #4da6ff);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .enhanced-button:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-  }
-
-  .enhanced-button:hover:before {
-    left: 100%;
-  }
-
-  .enhanced-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4);
-  }
-
-  /* Glassmorphism effect */
-  .glass-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-
-  [data-theme="dark"] .glass-card {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  /* Loading skeleton */
-  .skeleton {
-    background: linear-gradient(90deg, var(--header-bg) 25%, var(--table-border) 50%, var(--header-bg) 75%);
-    background-size: 200px 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  
-
-  /* Enhanced search with floating label */
-  .floating-label {
-    position: relative;
-  }
-
-  .floating-label input {
-    padding-top: 1.5rem;
-  }
-
-  .floating-label label {
-    position: absolute;
-    left: 1rem;
-    top: 1rem;
-    color: var(--placeholder-color);
-    transition: all 0.3s ease;
-    pointer-events: none;
-    font-size: 1rem;
-  }
-
-  .floating-label input:focus + label,
-  .floating-label input:not(:placeholder-shown) + label {
-    top: 0.3rem;
-    font-size: 0.75rem;
-    color: var(--info-color);
-    font-weight: 600;
-  }
-
-  /* Charts container */
-  .charts-section {
-    margin: 2rem 0;
-    padding: 2rem;
-    background: var(--table-bg);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--table-border);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .charts-section:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #4ade80, #22c55e, #3b82f6, #8b5cf6);
-    animation: gradient-shift 3s ease infinite;
-  }
-
-  @keyframes gradient-shift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  .charts-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .charts-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin: 0;
-  }
-
-  .chart-toggle {
-    background: var(--input-bg);
-    color: var(--text-color);
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    box-shadow: var(--shadow);
-  }
-
-  .chart-toggle:hover {
-    background: var(--header-bg);
-    border-color: var(--info-color);
-  }
-
-  .chart-container {
-    position: relative;
-    height: 400px;
-    margin-bottom: 1rem;
-  }
-
-  @media (max-width: 768px) {
-    .charts-section {
-      margin: 1rem -0.5rem;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    
-    .charts-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    
-    .chart-container {
-      height: 300px;
-    }
-  }
-</style>
-</head>
-<body>
-<a href="#main-content" class="skip-link">Skip to main content</a>
-<div class="container">
-  <div class="print-header" style="display: none;">
-    E-Number Lookup Reference - Printed on <span id="print-date"></span>
-  </div>
-  <h1 id="main-heading">E-Number Lookup</h1>
-  
-  
-
-  <div class="search-container">
-    <div class="search-input-group floating-label">
-      <input type="text" id="search" class="search-input" placeholder=" " maxlength="100" aria-describedby="search-help">
-      <label for="search">🔍 Search by E-number or name... (Ctrl+K)</label>
-      <div id="search-help" class="sr-only">Use this search box to find E-numbers by code or name. Results will update as you type.</div>
-      <button id="clear-search" class="clear-search" title="Clear search" aria-label="Clear search input">✕</button>
-    </div>
-    <div class="controls-group">
-      <label for="category-filter" class="sr-only">Filter by category</label>
-      <select id="category-filter" class="category-filter" aria-label="Filter by category">
-        <option value="">🔍 All Categories</option>
-        <option value="Colors">🎨 Colors</option>
-        <option value="Preservatives">🛡️ Preservatives</option>
-        <option value="Antioxidants & Acidity Regulators">⚗️ Antioxidants & Acidity Regulators</option>
-        <option value="Thickeners, Stabilizers & Emulsifiers">🥄 Thickeners, Stabilizers & Emulsifiers</option>
-        <option value="Acidity Regulators & Anti-caking Agents">🧪 Acidity Regulators & Anti-caking Agents</option>
-        <option value="Flavor Enhancers">🍋 Flavor Enhancers</option>
-        <option value="Antibiotics">💊 Antibiotics</option>
-        <option value="Glazing Agents, Sweeteners & Others">✨ Glazing Agents, Sweeteners & Others</option>
-        <option value="Additional Chemicals">🧬 Additional Chemicals</option>
-        <option value="Modified Starches">🌾 Modified Starches</option>
-        <option value="Other">📦 Other</option>
-      </select>
-      <label for="sort" class="sr-only">Sort options</label>
-      <select id="sort" aria-label="Sort results">
-        <option value="code">📊 Sort by E-Number</option>
-        <option value="name">🔤 Sort by Name</option>
-      </select>
-      <button id="theme-toggle" class="enhanced-button" aria-label="Toggle dark mode">🌙 Dark Mode</button>
-      <button id="export-csv" class="enhanced-button" title="Export current results to CSV (Ctrl+E)" aria-label="Export results to CSV">📁 Export CSV</button>
-    </div>
-  </div>
-
-  <div id="results-info" class="results-info" role="status" aria-live="polite"></div>
-  <div id="sync-info" class="sync-info" role="status" aria-live="polite">Sync status: checking...</div>
-  <div id="error-container" role="alert" aria-live="assertive"></div>
-  <div id="loading" class="loading" style="display:none;" role="status" aria-live="polite">Loading...</div>
-
-  <section class="charts-section" id="charts-section" aria-labelledby="charts-title">
-    <div class="charts-header">
-      <h2 class="charts-title" id="charts-title">Data Visualization</h2>
-      <button id="chart-toggle" class="chart-toggle" aria-expanded="true" aria-controls="chart-container">Hide Charts</button>
-    </div>
-    <div id="chart-container" class="chart-container" aria-label="E-Number category distribution chart">
-      <canvas id="categoryChart" role="img" aria-label="Chart showing distribution of E-numbers by category"></canvas>
-    </div>
-  </section>
-
-  <main id="main-content">
-    <div class="table-container">
-      <table id="etable" role="table" aria-label="E-Number lookup results">
-        <thead>
-          <tr>
-            <th scope="col">E-Number</th>
-            <th scope="col">Name</th>
-            <th scope="col">Category</th>
-            <th scope="col">Open Food Facts</th>
-            <th scope="col">Wikidata</th>
-            <th scope="col">Research</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-        </tbody>
-      </table>
-    </div>
-  </main>
-</div>
-
-<script>
-let enumbers = [];
-let searchTimeout;
-let currentSort = 'code';
-let categoryChart = null;
-let chartsVisible = true;
-let apiAvailable = false;  // true when data came from API (supports server-side search)
-
-// E-number category mapping
-function getCategory(code) {
-  if (!code) return '-';
-  
-  // Handle special cases first
-  if (code.toUpperCase().includes('E14XX')) return 'Modified Starches';
-  if (code.toUpperCase().includes('E15XX')) return 'Additional Chemicals';
-  if (code === 'E14') return 'Modified Starches'; // Special case for E14
-  if (code === 'E15') return 'Additional Chemicals'; // Special case for E15
-  
-  const num = parseInt(code.replace(/[^0-9]/g, ''));
-  
-  if (num >= 100 && num <= 199) return 'Colors';
-  if (num >= 200 && num <= 299) return 'Preservatives';
-  if (num >= 300 && num <= 399) return 'Antioxidants & Acidity Regulators';
-  if (num >= 400 && num <= 499) return 'Thickeners, Stabilizers & Emulsifiers';
-  if (num >= 500 && num <= 599) return 'Acidity Regulators & Anti-caking Agents';
-  if (num >= 600 && num <= 699) return 'Flavor Enhancers';
-  if (num >= 700 && num <= 799) return 'Antibiotics';
-  if (num >= 900 && num <= 999) return 'Glazing Agents, Sweeteners & Others';
-  if (num >= 1000 && num <= 1999) return 'Additional Chemicals';
-  if (num >= 1400 && num <= 1499) return 'Modified Starches';
-  if (num >= 1500 && num <= 1599) return 'Additional Chemicals';
-  
-  return 'Other';
-}
-
-// Security: HTML escaping function
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Security: URL validation function
-function isValidUrl(string) {
-  try {
-    const url = new URL(string);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch (_) {
-    return false;
-  }
-}
-
-// Get safety level based on E-number
-function getSafetyLevel(code) {
-  if (!code) return 'unknown';
-  
-  const num = parseInt(code.replace(/[^0-9]/g, ''));
-  
-  // Generally recognized as safe colors and preservatives
-  if ([100, 101, 102, 104, 110, 120, 140, 141, 150, 153, 160, 161, 162, 163, 170, 171, 172, 200, 202, 203, 210, 211, 212, 213, 220, 221, 222, 223, 224, 225, 226, 227, 228, 260, 270, 280, 290, 300, 301, 302, 303, 304, 306, 307, 308, 309, 310, 311, 312, 315, 316, 320, 321, 322, 325, 326, 327, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 350, 351, 352, 353, 354, 355, 356, 357, 363, 380, 381, 385, 400, 401, 402, 403, 404, 405, 406, 407, 410, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 440, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 500, 501, 503, 504, 507, 508, 509, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 575, 576, 577, 578, 579, 585, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 640, 641, 900, 901, 902, 903, 904, 905, 912, 914, 920, 921, 922, 924, 925, 926, 927, 928, 938, 939, 941, 942, 943, 944, 948, 950, 951, 952, 953, 954, 955, 957, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 999].includes(num)) {
-    return 'safe';
-  }
-  
-  // Caution - some concerns but generally acceptable
-  if ([103, 105, 111, 122, 123, 124, 125, 126, 127, 128, 129, 131, 132, 133, 142, 151, 154, 155, 180, 201, 214, 215, 216, 217, 218, 219, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 242, 249, 250, 251, 252, 260, 261, 262, 263, 264, 265, 266, 267, 270, 290, 296, 297, 365, 380, 432, 433, 434, 435, 436, 442, 444, 445, 450, 451, 452, 459, 481, 482, 483, 491, 492, 493, 494, 495, 536, 538, 541, 551, 552, 553, 554, 555, 556, 558, 559, 570, 621, 951, 952].includes(num)) {
-    return 'caution';
-  }
-  
-  // Warning - potential health concerns
-  if ([102, 107, 110, 122, 123, 124, 127, 128, 129, 131, 132, 133, 142, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 230, 231, 232, 233, 249, 250, 251, 252, 284, 285, 310, 311, 312, 319, 320, 321, 450, 451, 452, 621, 622, 623, 624, 625].includes(num)) {
-    return 'warning';
-  }
-  
-  return 'unknown';
-}
-
-// Security: Create DOM elements safely instead of using innerHTML
-function createTableRow(entry) {
-  const row = document.createElement('tr');
-  row.style.animation = 'fadeIn 0.5s ease-in-out';
-  if (entry.removed) row.classList.add('removed-entry');
-
-  // E-Number cell with safety indicator
-  const codeCell = document.createElement('td');
-  codeCell.className = 'e-number';
-
-  const safetyIndicator = document.createElement('span');
-  const safetyLevel = getSafetyLevel(entry.code);
-  safetyIndicator.className = `visual-indicator ${safetyLevel}`;
-  safetyIndicator.title = `Safety level: ${safetyLevel}`;
-
-  codeCell.appendChild(safetyIndicator);
-  codeCell.appendChild(document.createTextNode(entry.code || ''));
-  if (entry.removed) {
-    const badge = document.createElement('span');
-    badge.className = 'removed-badge';
-    badge.textContent = 'Removed';
-    badge.title = 'No longer in official Open Food Facts additive list';
-    codeCell.appendChild(badge);
-  }
-  row.appendChild(codeCell);
-  
-  // Name cell
-  const nameCell = document.createElement('td');
-  nameCell.className = 'name';
-  nameCell.textContent = entry.name || '';
-  row.appendChild(nameCell);
-  
-  // Category cell
-  const categoryCell = document.createElement('td');
-  const category = getCategory(entry.code);
-  categoryCell.className = 'category';
-  categoryCell.textContent = category;
-  row.appendChild(categoryCell);
-
-
-  
-  // Open Food Facts cell - use openfoodfacts_additive (additive metadata), not openfoodfacts (product data)
-  const offCell = document.createElement('td');
-  const offAdditive = entry.openfoodfacts_additive;
-  if (offAdditive?.url && isValidUrl(offAdditive.url)) {
-    const offLink = document.createElement('a');
-    offLink.href = offAdditive.url;
-    offLink.textContent = offAdditive.name || 'Open Food Facts';
-    offLink.target = '_blank';
-    offLink.rel = 'noopener noreferrer'; // Security: prevent window.opener access
-    offCell.appendChild(offLink);
-  } else if (entry.openfoodfacts?.link && isValidUrl(entry.openfoodfacts.link)) {
-    const offLink = document.createElement('a');
-    offLink.href = entry.openfoodfacts.link;
-    offLink.textContent = 'Open Food Facts (product)';
-    offLink.target = '_blank';
-    offLink.rel = 'noopener noreferrer';
-    offCell.appendChild(offLink);
-  } else {
-    const span = document.createElement('span');
-    span.className = 'no-data';
-    span.textContent = '-';
-    offCell.appendChild(span);
-  }
-  row.appendChild(offCell);
-  
-  // Wikidata cell
-  const wikiCell = document.createElement('td');
-  const wikiUrl = offAdditive?.sameAs?.[0];
-  if (wikiUrl && isValidUrl(wikiUrl)) {
-    const wikiLink = document.createElement('a');
-    wikiLink.href = wikiUrl;
-    wikiLink.textContent = 'Wikidata';
-    wikiLink.target = '_blank';
-    wikiLink.rel = 'noopener noreferrer';
-    wikiCell.appendChild(wikiLink);
-  } else {
-    const span = document.createElement('span');
-    span.className = 'no-data';
-    span.textContent = '-';
-    wikiCell.appendChild(span);
-  }
-  row.appendChild(wikiCell);
-  
-  // Research cell (PubMed)
-  const researchCell = document.createElement('td');
-  
-  // Check if this is a valid E-number for searching (e.g. E300, E472a)
-  const isValidENumber = /^E\d{1,4}[A-Za-z]?$/.test((entry.code || '').trim());
-  
-  if (isValidENumber && entry.name && entry.name.trim() !== '') {
-    const researchLink = document.createElement('a');
-    // Create a more intelligent search query
-    const searchTerms = [
-      entry.code,
-      entry.name,
-   //   'food additive',
-   //   'safety',
-   //   'health effects'
-    ].filter(term => term && term.trim() !== '').join(' ');
-    
-    researchLink.href = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(searchTerms)}`;
-    researchLink.textContent = 'PubMed Search';
-    researchLink.target = '_blank';
-    researchLink.rel = 'noopener noreferrer';
-    researchLink.title = 'Search scientific literature';
-    researchCell.appendChild(researchLink);
-  } else {
-    const span = document.createElement('span');
-    span.className = 'no-data';
-    span.textContent = '-';
-    span.title = 'No searchable data available';
-    researchCell.appendChild(span);
-  }
-  
-  row.appendChild(researchCell);
-  
-  return row;
-}
-
-function showError(message) {
-  const errorContainer = document.getElementById('error-container');
-  errorContainer.innerHTML = '';
-  
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'error';
-  errorDiv.textContent = message;
-  errorContainer.appendChild(errorDiv);
-}
-
-function hideError() {
-  document.getElementById('error-container').innerHTML = '';
-}
-
-function showLoading() {
-  document.getElementById('loading').style.display = 'block';
-}
-
-function hideLoading() {
-  document.getElementById('loading').style.display = 'none';
-}
-
-
-
-function renderTable(filter="") {
-  const tbody = document.getElementById('tbody');
-  const resultsInfo = document.getElementById('results-info');
-  
-  // Add skeleton loading effect
-  tbody.innerHTML = '<tr><td colspan="6" class="skeleton" style="height: 50px;"></td></tr>';
-  
-  // Clear existing rows after brief delay for loading effect
-  setTimeout(() => {
-    while (tbody.firstChild) {
-      tbody.removeChild(tbody.firstChild);
-    }
-  
-  // Security: Escape filter input
-  const safeFilter = filter.toLowerCase().trim();
-  
-  // Get selected category
-  const selectedCategory = document.getElementById('category-filter').value;
-  
-  // Filter entries
-  let filteredEntries = enumbers.filter(e => 
-    (e.code || '').toLowerCase().includes(safeFilter) || 
-    (e.name || '').toLowerCase().includes(safeFilter)
-  );
-  
-  // Apply category filter if selected
-  if (selectedCategory) {
-    filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
-  }
-  
-  // Sort entries
-  const sortedEntries = filteredEntries.sort((a, b) => {
-    if (currentSort === 'code') {
-      // Sort by E-number (numerical order)
-      const aNum = parseInt(a.code.replace(/[^0-9]/g, ''));
-      const bNum = parseInt(b.code.replace(/[^0-9]/g, ''));
-      return aNum - bNum;
-    } else {
-      // Sort by name (alphabetical)
-      return a.name.localeCompare(b.name);
-    }
-  });
-  
-  // Limit results for performance
-  const limitedEntries = sortedEntries.slice(0, 500);
-  
-  // Show results count
-  if (safeFilter || selectedCategory) {
-    const totalResults = filteredEntries.length;
-    const shownResults = limitedEntries.length;
-    let message = `Found ${totalResults} result${totalResults !== 1 ? 's' : ''}`;
-    
-    if (selectedCategory) {
-      message += ` in category "${selectedCategory}"`;
-    }
-    
-    if (totalResults > 500) {
-      message += ` (showing first 500)`;
-    }
-    resultsInfo.textContent = message;
-    resultsInfo.classList.add('visible');
-  } else {
-    resultsInfo.classList.remove('visible');
-  }
-  
-  
-  
-  // Create and append rows with staggered animation
-  const fragment = document.createDocumentFragment();
-  limitedEntries.forEach((entry, index) => {
-    const row = createTableRow(entry);
-    row.style.animationDelay = `${index * 0.05}s`;
-    // Make cells focusable for keyboard navigation
-    row.querySelectorAll('td').forEach(cell => {
-      cell.setAttribute('tabindex', '0');
-    });
-    fragment.appendChild(row);
-  });
-  tbody.appendChild(fragment);
-  
-  // Update chart with filtered data
-  updateChart();
-  }, 300); // Brief delay for loading effect
-}
-
-// Security: Debounced search to prevent excessive API calls
-document.getElementById('search').addEventListener('input', function(e) {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(async () => {
-    const query = e.target.value.trim();
-    // Security: Limit input length
-    if (e.target.value.length > 100) {
-      e.target.value = e.target.value.substring(0, 100);
-      return;
-    }
-    
-    // Show/hide clear button
-    const clearButton = document.getElementById('clear-search');
-    if (e.target.value.length > 0) {
-      clearButton.classList.add('visible');
-    } else {
-      clearButton.classList.remove('visible');
-    }
-    
-    // Use API search when available (server-side filtering)
-    if (apiAvailable) {
-      try {
-        showLoading();
-        const data = await loadData(query, 500);
-        enumbers = data;
-        renderTable('');  // no client filter - data already filtered by API
-        updateChart();
-      } catch (err) {
-        console.warn('API search failed, using client-side filter:', err);
-        renderTable(query);  // fallback to client-side filter
-      } finally {
-        hideLoading();
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body {
+        font-size: 13px;
       }
-    } else {
-      renderTable(query);  // local JSON mode - client-side filter only
+
+      .container {
+        padding: 1rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .search-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+
+      .search-input-group {
+        min-width: auto;
+        max-width: none;
+      }
+
+      .controls-group {
+        justify-content: space-between;
+      }
+
+      select,
+      .theme-toggle {
+        flex: 1;
+        min-width: 0;
+        padding: 0.75rem 1rem;
+      }
+
+      .category-filter {
+        min-width: 0;
+      }
+
+      .table-container {
+        margin: 0 -0.5rem;
+        border-radius: 8px;
+      }
+
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+      }
+
+      .results-info {
+        margin: 0 -0.5rem 1rem -0.5rem;
+        border-radius: 8px;
+      }
     }
-  }, 300); // 300ms debounce
-});
 
-// Sort dropdown change handler
-document.getElementById('sort').addEventListener('change', function(e) {
-  currentSort = e.target.value;
-  renderTable(document.getElementById('search').value);
-});
+    @media (max-width: 480px) {
+      .container {
+        padding: 0.75rem;
+      }
 
-// Category filter dropdown change handler
-document.getElementById('category-filter').addEventListener('change', function(e) {
-  renderTable(document.getElementById('search').value);
-});
+      .controls-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
 
-// Clear search button handler
-document.getElementById('clear-search').addEventListener('click', async function() {
-  document.getElementById('search').value = '';
-  document.getElementById('category-filter').value = '';
-  document.getElementById('clear-search').classList.remove('visible');
-  if (apiAvailable) {
-    try {
-      showLoading();
-      enumbers = await loadData('', 1000);
-      renderTable('');
-      updateChart();
-    } catch (err) {
-      renderTable('');
-    } finally {
-      hideLoading();
+      select,
+      .theme-toggle {
+        width: 100%;
+      }
+
+
     }
-  } else {
-    renderTable();
-  }
-});
 
-// Keyboard shortcuts and navigation
-document.addEventListener('keydown', function(e) {
-  // Ctrl/Cmd + K to focus search
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-    e.preventDefault();
-    document.getElementById('search').focus();
-  }
-  
-  // Escape to clear search
-  if (e.key === 'Escape') {
-    const searchInput = document.getElementById('search');
-    if (searchInput.value) {
-      searchInput.value = '';
+    /* Large screen optimizations */
+    @media (min-width: 1200px) {
+      .container {
+        max-width: none;
+        padding: 3rem;
+      }
+
+      .search-input-group {
+        max-width: 800px;
+      }
+
+      table {
+        font-size: 1rem;
+      }
+
+      th,
+      td {
+        padding: 1.25rem 2rem;
+      }
+    }
+
+    @media (min-width: 1600px) {
+      .container {
+        padding: 4rem;
+      }
+
+      .search-input-group {
+        max-width: 1000px;
+      }
+    }
+
+    /* Print Styles */
+    @media print {
+      * {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+      }
+
+      body {
+        font-size: 12pt;
+        line-height: 1.4;
+      }
+
+      .container {
+        padding: 0;
+        max-width: none;
+      }
+
+      .search-container,
+      .controls-group,
+      .theme-toggle,
+      #export-csv,
+      .results-info,
+      #sync-info,
+      #error-container,
+      #loading,
+      #chart-container {
+        display: none !important;
+      }
+
+      h1 {
+        font-size: 18pt;
+        margin-bottom: 1rem;
+        page-break-after: avoid;
+      }
+
+      .table-container {
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: auto;
+      }
+
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 0.5rem;
+        font-size: 10pt;
+        page-break-inside: avoid;
+      }
+
+      th {
+        background: #f0f0f0 !important;
+        font-weight: bold;
+      }
+
+      tr {
+        page-break-inside: avoid;
+      }
+
+      a {
+        text-decoration: underline;
+        color: black !important;
+      }
+
+      a:after {
+        content: " (" attr(href) ")";
+        font-size: 9pt;
+        font-style: italic;
+      }
+
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 1rem;
+        font-size: 10pt;
+      }
+    }
+
+    /* Accessibility Improvements */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 6px;
+      background: var(--info-color);
+      color: white;
+      padding: 8px;
+      text-decoration: none;
+      border-radius: 4px;
+      z-index: 1000;
+      transition: top 0.3s;
+    }
+
+    .skip-link:focus {
+      top: 6px;
+    }
+
+    /* Focus indicators */
+    button:focus,
+    input:focus,
+    select:focus,
+    a:focus {
+      outline: 2px solid var(--info-color);
+      outline-offset: 2px;
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      :root {
+        --text-color: #000;
+        --bg-color: #fff;
+        --table-border: #000;
+        --input-border: #000;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Enhanced visual elements */
+    .visual-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+      animation: pulse 2s infinite;
+    }
+
+    .safe {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+    }
+
+    .caution {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    }
+
+    .warning {
+      background: linear-gradient(135deg, #f87171, #ef4444);
+    }
+
+    .unknown {
+      background: linear-gradient(135deg, #94a3b8, #64748b);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200px 0;
+      }
+
+      100% {
+        background-position: calc(200px + 100%) 0;
+      }
+    }
+
+    /* Enhanced buttons with gradients */
+    .enhanced-button {
+      background: linear-gradient(135deg, var(--info-color), #4da6ff);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .enhanced-button:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .enhanced-button:hover:before {
+      left: 100%;
+    }
+
+    .enhanced-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4);
+    }
+
+    /* Glassmorphism effect */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] .glass-card {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--header-bg) 25%, var(--table-border) 50%, var(--header-bg) 75%);
+      background-size: 200px 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+
+
+    /* Enhanced search with floating label */
+    .floating-label {
+      position: relative;
+    }
+
+    .floating-label input {
+      padding-top: 1.5rem;
+    }
+
+    .floating-label label {
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      color: var(--placeholder-color);
+      transition: all 0.3s ease;
+      pointer-events: none;
+      font-size: 1rem;
+    }
+
+    .floating-label input:focus+label,
+    .floating-label input:not(:placeholder-shown)+label {
+      top: 0.3rem;
+      font-size: 0.75rem;
+      color: var(--info-color);
+      font-weight: 600;
+    }
+
+    /* Charts container */
+    .charts-section {
+      margin: 2rem 0;
+      padding: 2rem;
+      background: var(--table-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--table-border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .charts-section:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #4ade80, #22c55e, #3b82f6, #8b5cf6);
+      animation: gradient-shift 3s ease infinite;
+    }
+
+    @keyframes gradient-shift {
+
+      0%,
+      100% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    .charts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .charts-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0;
+    }
+
+    .chart-toggle {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-toggle:hover {
+      background: var(--header-bg);
+      border-color: var(--info-color);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .charts-section {
+        margin: 1rem -0.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+      }
+
+      .charts-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .chart-container {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="container">
+    <div class="print-header" style="display: none;">
+      E-Number Lookup Reference - Printed on <span id="print-date"></span>
+    </div>
+    <h1 id="main-heading">E-Number Lookup</h1>
+
+
+
+    <div class="search-container">
+      <div class="search-input-group floating-label">
+        <input type="text" id="search" class="search-input" placeholder=" " maxlength="100"
+          aria-describedby="search-help">
+        <label for="search">🔍 Search by E-number or name... (Ctrl+K)</label>
+        <div id="search-help" class="sr-only">Use this search box to find E-numbers by code or name. Results will update
+          as you type.</div>
+        <button id="clear-search" class="clear-search" title="Clear search" aria-label="Clear search input">✕</button>
+      </div>
+      <div class="controls-group">
+        <label for="category-filter" class="sr-only">Filter by category</label>
+        <select id="category-filter" class="category-filter" aria-label="Filter by category">
+          <option value="">🔍 All Categories</option>
+          <option value="Colors">🎨 Colors</option>
+          <option value="Preservatives">🛡️ Preservatives</option>
+          <option value="Antioxidants & Acidity Regulators">⚗️ Antioxidants & Acidity Regulators</option>
+          <option value="Thickeners, Stabilizers & Emulsifiers">🥄 Thickeners, Stabilizers & Emulsifiers</option>
+          <option value="Acidity Regulators & Anti-caking Agents">🧪 Acidity Regulators & Anti-caking Agents</option>
+          <option value="Flavor Enhancers">🍋 Flavor Enhancers</option>
+          <option value="Antibiotics">💊 Antibiotics</option>
+          <option value="Glazing Agents, Sweeteners & Others">✨ Glazing Agents, Sweeteners & Others</option>
+          <option value="Additional Chemicals">🧬 Additional Chemicals</option>
+          <option value="Modified Starches">🌾 Modified Starches</option>
+          <option value="Other">📦 Other</option>
+        </select>
+        <label for="sort" class="sr-only">Sort options</label>
+        <select id="sort" aria-label="Sort results">
+          <option value="code">📊 Sort by E-Number</option>
+          <option value="name">🔤 Sort by Name</option>
+        </select>
+        <button id="theme-toggle" class="enhanced-button" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+        <button id="export-csv" class="enhanced-button" title="Export current results to CSV (Ctrl+E)"
+          aria-label="Export results to CSV">📁 Export CSV</button>
+      </div>
+    </div>
+
+    <div id="results-info" class="results-info" role="status" aria-live="polite"></div>
+    <div id="sync-info" class="sync-info" role="status" aria-live="polite">Sync status: checking...</div>
+    <div id="error-container" role="alert" aria-live="assertive"></div>
+    <div id="loading" class="loading" style="display:none;" role="status" aria-live="polite">Loading...</div>
+
+    <section class="charts-section" id="charts-section" aria-labelledby="charts-title">
+      <div class="charts-header">
+        <h2 class="charts-title" id="charts-title">Data Visualization</h2>
+        <button id="chart-toggle" class="chart-toggle" aria-expanded="true" aria-controls="chart-container">Hide
+          Charts</button>
+      </div>
+      <div id="chart-container" class="chart-container" aria-label="E-Number category distribution chart">
+        <canvas id="categoryChart" role="img" aria-label="Chart showing distribution of E-numbers by category"></canvas>
+      </div>
+    </section>
+
+    <main id="main-content">
+      <div class="table-container">
+        <table id="etable" role="table" aria-label="E-Number lookup results">
+          <thead>
+            <tr>
+              <th scope="col">E-Number</th>
+              <th scope="col">Name</th>
+              <th scope="col">Category</th>
+              <th scope="col">Open Food Facts</th>
+              <th scope="col">Wikidata</th>
+              <th scope="col">Research</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let enumbers = [];
+    let searchTimeout;
+    let currentSort = 'code';
+    let categoryChart = null;
+    let chartsVisible = true;
+    let apiAvailable = false;  // true when data came from API (supports server-side search)
+
+    // E-number category mapping
+    function getCategory(code) {
+      if (!code) return '-';
+
+      // Handle special cases first
+      if (code.toUpperCase().includes('E14XX')) return 'Modified Starches';
+      if (code.toUpperCase().includes('E15XX')) return 'Additional Chemicals';
+      if (code === 'E14') return 'Modified Starches'; // Special case for E14
+      if (code === 'E15') return 'Additional Chemicals'; // Special case for E15
+
+      const num = parseInt(code.replace(/[^0-9]/g, ''));
+
+      if (num >= 100 && num <= 199) return 'Colors';
+      if (num >= 200 && num <= 299) return 'Preservatives';
+      if (num >= 300 && num <= 399) return 'Antioxidants & Acidity Regulators';
+      if (num >= 400 && num <= 499) return 'Thickeners, Stabilizers & Emulsifiers';
+      if (num >= 500 && num <= 599) return 'Acidity Regulators & Anti-caking Agents';
+      if (num >= 600 && num <= 699) return 'Flavor Enhancers';
+      if (num >= 700 && num <= 799) return 'Antibiotics';
+      if (num >= 900 && num <= 999) return 'Glazing Agents, Sweeteners & Others';
+      if (num >= 1000 && num <= 1999) return 'Additional Chemicals';
+      if (num >= 1400 && num <= 1499) return 'Modified Starches';
+      if (num >= 1500 && num <= 1599) return 'Additional Chemicals';
+
+      return 'Other';
+    }
+
+    // Security: HTML escaping function
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Security: URL validation function
+    function isValidUrl(string) {
+      try {
+        const url = new URL(string);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch (_) {
+        return false;
+      }
+    }
+
+    // Get safety level based on E-number
+    function getSafetyLevel(code) {
+      if (!code) return 'unknown';
+
+      const num = parseInt(code.replace(/[^0-9]/g, ''));
+
+      // Generally recognized as safe colors and preservatives
+      if ([100, 101, 102, 104, 110, 120, 140, 141, 150, 153, 160, 161, 162, 163, 170, 171, 172, 200, 202, 203, 210, 211, 212, 213, 220, 221, 222, 223, 224, 225, 226, 227, 228, 260, 270, 280, 290, 300, 301, 302, 303, 304, 306, 307, 308, 309, 310, 311, 312, 315, 316, 320, 321, 322, 325, 326, 327, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 350, 351, 352, 353, 354, 355, 356, 357, 363, 380, 381, 385, 400, 401, 402, 403, 404, 405, 406, 407, 410, 412, 413, 414, 415, 416, 417, 418, 420, 421, 422, 440, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 500, 501, 503, 504, 507, 508, 509, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 575, 576, 577, 578, 579, 585, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 640, 641, 900, 901, 902, 903, 904, 905, 912, 914, 920, 921, 922, 924, 925, 926, 927, 928, 938, 939, 941, 942, 943, 944, 948, 950, 951, 952, 953, 954, 955, 957, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 999].includes(num)) {
+        return 'safe';
+      }
+
+      // Caution - some concerns but generally acceptable
+      if ([103, 105, 111, 122, 123, 124, 125, 126, 127, 128, 129, 131, 132, 133, 142, 151, 154, 155, 180, 201, 214, 215, 216, 217, 218, 219, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 242, 249, 250, 251, 252, 260, 261, 262, 263, 264, 265, 266, 267, 270, 290, 296, 297, 365, 380, 432, 433, 434, 435, 436, 442, 444, 445, 450, 451, 452, 459, 481, 482, 483, 491, 492, 493, 494, 495, 536, 538, 541, 551, 552, 553, 554, 555, 556, 558, 559, 570, 621, 951, 952].includes(num)) {
+        return 'caution';
+      }
+
+      // Warning - potential health concerns
+      if ([102, 107, 110, 122, 123, 124, 127, 128, 129, 131, 132, 133, 142, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 230, 231, 232, 233, 249, 250, 251, 252, 284, 285, 310, 311, 312, 319, 320, 321, 450, 451, 452, 621, 622, 623, 624, 625].includes(num)) {
+        return 'warning';
+      }
+
+      return 'unknown';
+    }
+
+    // Security: Create DOM elements safely instead of using innerHTML
+    function createTableRow(entry) {
+      const row = document.createElement('tr');
+      row.style.animation = 'fadeIn 0.5s ease-in-out';
+      if (entry.removed) row.classList.add('removed-entry');
+
+      // E-Number cell with safety indicator
+      const codeCell = document.createElement('td');
+      codeCell.className = 'e-number';
+
+      const safetyIndicator = document.createElement('span');
+      const safetyLevel = getSafetyLevel(entry.code);
+      safetyIndicator.className = `visual-indicator ${safetyLevel}`;
+      safetyIndicator.title = `Safety level: ${safetyLevel}`;
+
+      codeCell.appendChild(safetyIndicator);
+      codeCell.appendChild(document.createTextNode(entry.code || ''));
+      if (entry.removed) {
+        const badge = document.createElement('span');
+        badge.className = 'removed-badge';
+        badge.textContent = 'Removed';
+        badge.title = entry.removed_source === 'admin'
+          ? 'Marked removed by an administrator'
+          : 'Not confirmed in the EU Food Additives source';
+        codeCell.appendChild(badge);
+      }
+      row.appendChild(codeCell);
+
+      // Name cell
+      const nameCell = document.createElement('td');
+      nameCell.className = 'name';
+      nameCell.textContent = entry.name || '';
+      row.appendChild(nameCell);
+
+      // Category cell
+      const categoryCell = document.createElement('td');
+      const category = getCategory(entry.code);
+      categoryCell.className = 'category';
+      categoryCell.textContent = category;
+      row.appendChild(categoryCell);
+
+
+
+      // Open Food Facts cell - use openfoodfacts_additive (additive metadata), not openfoodfacts (product data)
+      const offCell = document.createElement('td');
+      const offAdditive = entry.openfoodfacts_additive;
+      if (offAdditive?.url && isValidUrl(offAdditive.url)) {
+        const offLink = document.createElement('a');
+        offLink.href = offAdditive.url;
+        offLink.textContent = offAdditive.name || 'Open Food Facts';
+        offLink.target = '_blank';
+        offLink.rel = 'noopener noreferrer'; // Security: prevent window.opener access
+        offCell.appendChild(offLink);
+      } else if (entry.openfoodfacts?.link && isValidUrl(entry.openfoodfacts.link)) {
+        const offLink = document.createElement('a');
+        offLink.href = entry.openfoodfacts.link;
+        offLink.textContent = 'Open Food Facts (product)';
+        offLink.target = '_blank';
+        offLink.rel = 'noopener noreferrer';
+        offCell.appendChild(offLink);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'no-data';
+        span.textContent = '-';
+        offCell.appendChild(span);
+      }
+      row.appendChild(offCell);
+
+      // Wikidata cell
+      const wikiCell = document.createElement('td');
+      const wikiUrl = offAdditive?.sameAs?.[0];
+      if (wikiUrl && isValidUrl(wikiUrl)) {
+        const wikiLink = document.createElement('a');
+        wikiLink.href = wikiUrl;
+        wikiLink.textContent = 'Wikidata';
+        wikiLink.target = '_blank';
+        wikiLink.rel = 'noopener noreferrer';
+        wikiCell.appendChild(wikiLink);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'no-data';
+        span.textContent = '-';
+        wikiCell.appendChild(span);
+      }
+      row.appendChild(wikiCell);
+
+      // Research cell (PubMed)
+      const researchCell = document.createElement('td');
+
+      // Check if this is a valid E-number for searching (e.g. E300, E472a)
+      const isValidENumber = /^E\d{1,4}[A-Za-z]?$/.test((entry.code || '').trim());
+
+      if (isValidENumber && entry.name && entry.name.trim() !== '') {
+        const researchLink = document.createElement('a');
+        // Create a more intelligent search query
+        const searchTerms = [
+          entry.code,
+          entry.name,
+          //   'food additive',
+          //   'safety',
+          //   'health effects'
+        ].filter(term => term && term.trim() !== '').join(' ');
+
+        researchLink.href = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(searchTerms)}`;
+        researchLink.textContent = 'PubMed Search';
+        researchLink.target = '_blank';
+        researchLink.rel = 'noopener noreferrer';
+        researchLink.title = 'Search scientific literature';
+        researchCell.appendChild(researchLink);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'no-data';
+        span.textContent = '-';
+        span.title = 'No searchable data available';
+        researchCell.appendChild(span);
+      }
+
+      row.appendChild(researchCell);
+
+      return row;
+    }
+
+    function showError(message) {
+      const errorContainer = document.getElementById('error-container');
+      errorContainer.innerHTML = '';
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = message;
+      errorContainer.appendChild(errorDiv);
+    }
+
+    function hideError() {
+      document.getElementById('error-container').innerHTML = '';
+    }
+
+    function showLoading() {
+      document.getElementById('loading').style.display = 'block';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+
+
+    function renderTable(filter = "") {
+      const tbody = document.getElementById('tbody');
+      const resultsInfo = document.getElementById('results-info');
+
+      // Add skeleton loading effect
+      tbody.innerHTML = '<tr><td colspan="6" class="skeleton" style="height: 50px;"></td></tr>';
+
+      // Clear existing rows after brief delay for loading effect
+      setTimeout(() => {
+        while (tbody.firstChild) {
+          tbody.removeChild(tbody.firstChild);
+        }
+
+        // Security: Escape filter input
+        const safeFilter = filter.toLowerCase().trim();
+
+        // Get selected category
+        const selectedCategory = document.getElementById('category-filter').value;
+
+        // Filter entries
+        let filteredEntries = enumbers.filter(e =>
+          (e.code || '').toLowerCase().includes(safeFilter) ||
+          (e.name || '').toLowerCase().includes(safeFilter)
+        );
+
+        // Apply category filter if selected
+        if (selectedCategory) {
+          filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
+        }
+
+        // Sort entries
+        const sortedEntries = filteredEntries.sort((a, b) => {
+          if (currentSort === 'code') {
+            // Sort by E-number (numerical order)
+            const aNum = parseInt(a.code.replace(/[^0-9]/g, ''));
+            const bNum = parseInt(b.code.replace(/[^0-9]/g, ''));
+            return aNum - bNum;
+          } else {
+            // Sort by name (alphabetical)
+            return a.name.localeCompare(b.name);
+          }
+        });
+
+        // Limit results for performance
+        const limitedEntries = sortedEntries.slice(0, 500);
+
+        // Show results count
+        if (safeFilter || selectedCategory) {
+          const totalResults = filteredEntries.length;
+          const shownResults = limitedEntries.length;
+          let message = `Found ${totalResults} result${totalResults !== 1 ? 's' : ''}`;
+
+          if (selectedCategory) {
+            message += ` in category "${selectedCategory}"`;
+          }
+
+          if (totalResults > 500) {
+            message += ` (showing first 500)`;
+          }
+          resultsInfo.textContent = message;
+          resultsInfo.classList.add('visible');
+        } else {
+          resultsInfo.classList.remove('visible');
+        }
+
+
+
+        // Create and append rows with staggered animation
+        const fragment = document.createDocumentFragment();
+        limitedEntries.forEach((entry, index) => {
+          const row = createTableRow(entry);
+          row.style.animationDelay = `${index * 0.05}s`;
+          // Make cells focusable for keyboard navigation
+          row.querySelectorAll('td').forEach(cell => {
+            cell.setAttribute('tabindex', '0');
+          });
+          fragment.appendChild(row);
+        });
+        tbody.appendChild(fragment);
+
+        // Update chart with filtered data
+        updateChart();
+      }, 300); // Brief delay for loading effect
+    }
+
+    // Security: Debounced search to prevent excessive API calls
+    document.getElementById('search').addEventListener('input', function (e) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(async () => {
+        const query = e.target.value.trim();
+        // Security: Limit input length
+        if (e.target.value.length > 100) {
+          e.target.value = e.target.value.substring(0, 100);
+          return;
+        }
+
+        // Show/hide clear button
+        const clearButton = document.getElementById('clear-search');
+        if (e.target.value.length > 0) {
+          clearButton.classList.add('visible');
+        } else {
+          clearButton.classList.remove('visible');
+        }
+
+        // Use API search when available (server-side filtering)
+        if (apiAvailable) {
+          try {
+            showLoading();
+            const data = await loadData(query, 500);
+            enumbers = data;
+            renderTable('');  // no client filter - data already filtered by API
+            updateChart();
+          } catch (err) {
+            console.warn('API search failed, using client-side filter:', err);
+            renderTable(query);  // fallback to client-side filter
+          } finally {
+            hideLoading();
+          }
+        } else {
+          renderTable(query);  // local JSON mode - client-side filter only
+        }
+      }, 300); // 300ms debounce
+    });
+
+    // Sort dropdown change handler
+    document.getElementById('sort').addEventListener('change', function (e) {
+      currentSort = e.target.value;
+      renderTable(document.getElementById('search').value);
+    });
+
+    // Category filter dropdown change handler
+    document.getElementById('category-filter').addEventListener('change', function (e) {
+      renderTable(document.getElementById('search').value);
+    });
+
+    // Clear search button handler
+    document.getElementById('clear-search').addEventListener('click', async function () {
+      document.getElementById('search').value = '';
       document.getElementById('category-filter').value = '';
       document.getElementById('clear-search').classList.remove('visible');
       if (apiAvailable) {
-        loadData('', 1000).then(data => {
-          enumbers = data;
+        try {
+          showLoading();
+          enumbers = await loadData('', 1000);
           renderTable('');
           updateChart();
-        }).catch(() => renderTable(''));
+        } catch (err) {
+          renderTable('');
+        } finally {
+          hideLoading();
+        }
       } else {
         renderTable();
       }
-    }
-  }
-  
-  // Ctrl/Cmd + E to export
-  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-    e.preventDefault();
-    exportToCSV();
-  }
-  
-  // Ctrl/Cmd + D to toggle charts
-  if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-    e.preventDefault();
-    toggleCharts();
-  }
-  
-  // Arrow key navigation for table
-  if (e.target.tagName === 'TD' || e.target.tagName === 'TH') {
-    const currentRow = e.target.parentElement;
-    const currentCell = e.target;
-    const table = document.getElementById('etable');
-    
-    switch(e.key) {
-      case 'ArrowUp':
-        e.preventDefault();
-        const prevRow = currentRow.previousElementSibling;
-        if (prevRow) {
-          const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
-          prevRow.children[cellIndex]?.focus();
-        }
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        const nextRow = currentRow.nextElementSibling;
-        if (nextRow) {
-          const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
-          nextRow.children[cellIndex]?.focus();
-        }
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        if (currentCell.previousElementSibling) {
-          currentCell.previousElementSibling.focus();
-        }
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        if (currentCell.nextElementSibling) {
-          currentCell.nextElementSibling.focus();
-        }
-        break;
-    }
-  }
-});
-
-// Theme toggle functionality
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  
-  // Update button text with icons
-  const button = document.getElementById('theme-toggle');
-  button.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-  
-  // Add a subtle animation
-  button.style.transform = 'scale(0.95)';
-  setTimeout(() => {
-    button.style.transform = 'scale(1)';
-  }, 150);
-}
-
-// Load theme from localStorage on page load
-function loadTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme) {
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    const button = document.getElementById('theme-toggle');
-    button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-  } else {
-    const button = document.getElementById('theme-toggle');
-    button.textContent = '🌙 Dark Mode';
-  }
-}
-
-// Chart functionality
-function createCategoryChart(data) {
-  const ctx = document.getElementById('categoryChart');
-  if (!ctx || !data.length) return;
-  
-  // Check if Chart.js is available
-  if (typeof Chart === 'undefined') {
-    console.error('Chart.js not available');
-    return;
-  }
-  
-  // Debug: Log the data being processed
-  console.log('Creating chart with data:', data);
-
-  // Count categories
-  const categoryCounts = {};
-  data.forEach(entry => {
-    const category = getCategory(entry.code);
-    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-  });
-
-  // Sort by count for better visualization
-  const sortedCategories = Object.entries(categoryCounts)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 10); // Show top 10 categories
-
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-  // Chart.js data format
-  const chartData = {
-    labels: sortedCategories.map(([category]) => category),
-    datasets: [{
-      label: 'Number of E-Numbers',
-      data: sortedCategories.map(([, count]) => count),
-      backgroundColor: [
-        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-        '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
-      ],
-      borderColor: isDark ? '#fff' : '#333',
-      borderWidth: 1
-    }]
-  };
-  
-  // Debug: Log the processed data
-  console.log('Chart.js data:', chartData);
-  console.log('Sorted categories:', sortedCategories);
-
-  // Chart.js options
-  const chartOptions = {
-    type: 'doughnut',
-    data: chartData,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            color: isDark ? '#e9ecef' : '#333',
-            padding: 20,
-            usePointStyle: true
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const label = context.label || '';
-              const value = context.parsed;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = ((value / total) * 100).toFixed(1);
-              return `${label}: ${value} (${percentage}%)`;
-            }
-          }
-        }
-      },
-      animation: {
-        animateRotate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      }
-    }
-  };
-  
-  console.log('Chart.js options:', chartOptions);
-
-  if (categoryChart) {
-    categoryChart.destroy();
-  }
-  
-  categoryChart = new Chart(ctx, chartOptions);
-}
-
-function updateChart() {
-  if (!chartsVisible || !enumbers.length) return;
-  
-  const currentFilter = document.getElementById('search').value.toLowerCase().trim();
-  const selectedCategory = document.getElementById('category-filter').value;
-  
-  let filteredEntries = enumbers.filter(e => 
-    (e.code || '').toLowerCase().includes(currentFilter) || 
-    (e.name || '').toLowerCase().includes(currentFilter)
-  );
-  
-  if (selectedCategory) {
-    filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
-  }
-  
-  createCategoryChart(filteredEntries);
-}
-
-function toggleCharts() {
-  chartsVisible = !chartsVisible;
-  const container = document.getElementById('chart-container');
-  const button = document.getElementById('chart-toggle');
-  
-  if (chartsVisible) {
-    container.style.display = 'block';
-    button.textContent = 'Hide Charts';
-    button.setAttribute('aria-expanded', 'true');
-    updateChart();
-  } else {
-    container.style.display = 'none';
-    button.textContent = 'Show Charts';
-    button.setAttribute('aria-expanded', 'false');
-  }
-}
-
-// Export to CSV functionality
-function exportToCSV() {
-  const csvContent = generateCSV();
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', 'enumbers.csv');
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function generateCSV() {
-  const headers = ['E-Number', 'Name', 'Category', 'Open Food Facts URL', 'Wikidata URL'];
-  const csvRows = [headers.join(',')];
-  
-  const currentFilter = document.getElementById('search').value.toLowerCase().trim();
-  const selectedCategory = document.getElementById('category-filter').value;
-  
-  let filteredEntries = enumbers.filter(e => 
-    (e.code || '').toLowerCase().includes(currentFilter) || 
-    (e.name || '').toLowerCase().includes(currentFilter)
-  );
-  
-  if (selectedCategory) {
-    filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
-  }
-  
-  filteredEntries.forEach(entry => {
-    const category = getCategory(entry.code);
-    const offUrl = entry.openfoodfacts_additive?.url || entry.openfoodfacts?.link || '';
-    const wikiUrl = entry.openfoodfacts_additive?.sameAs?.[0] || '';
-    
-    const row = [
-      `"${(entry.code || '').replace(/"/g, '""')}"`,
-      `"${(entry.name || '').replace(/"/g, '""')}"`,
-      `"${category}"`,
-      `"${offUrl}"`,
-      `"${wikiUrl}"`
-    ];
-    csvRows.push(row.join(','));
-  });
-  
-  return csvRows.join('\n');
-}
-
-// Initialize theme and event listeners when DOM is ready
-function initializeTheme() {
-  loadTheme();
-  
-  // Set print date
-  document.getElementById('print-date').textContent = new Date().toLocaleDateString();
-  
-  // Add event listeners
-  const themeButton = document.getElementById('theme-toggle');
-  if (themeButton) {
-    themeButton.addEventListener('click', toggleTheme);
-  }
-  
-  const exportButton = document.getElementById('export-csv');
-  if (exportButton) {
-    exportButton.addEventListener('click', exportToCSV);
-  }
-  
-  const chartToggleButton = document.getElementById('chart-toggle');
-  if (chartToggleButton) {
-    chartToggleButton.addEventListener('click', toggleCharts);
-  }
-  
-  // Make table cells focusable for keyboard navigation
-  setTimeout(() => {
-    const tableCells = document.querySelectorAll('#etable td, #etable th');
-    tableCells.forEach(cell => {
-      cell.setAttribute('tabindex', '0');
     });
-  }, 100);
-}
 
-// Load theme when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeTheme);
-} else {
-  initializeTheme();
-}
+    // Keyboard shortcuts and navigation
+    document.addEventListener('keydown', function (e) {
+      // Ctrl/Cmd + K to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('search').focus();
+      }
 
-// Security: Fetch with error handling and timeout
-function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-  
-  return fetch(url, {
-    ...options,
-    signal: controller.signal
-  }).finally(() => {
-    clearTimeout(timeoutId);
-  });
-}
+      // Escape to clear search
+      if (e.key === 'Escape') {
+        const searchInput = document.getElementById('search');
+        if (searchInput.value) {
+          searchInput.value = '';
+          document.getElementById('category-filter').value = '';
+          document.getElementById('clear-search').classList.remove('visible');
+          if (apiAvailable) {
+            loadData('', 1000).then(data => {
+              enumbers = data;
+              renderTable('');
+              updateChart();
+            }).catch(() => renderTable(''));
+          } else {
+            renderTable();
+          }
+        }
+      }
 
-function formatTimestampForDisplay(isoTimestamp) {
-  if (!isoTimestamp) return 'Not yet run';
-  const date = new Date(isoTimestamp);
-  if (Number.isNaN(date.getTime())) return 'Unknown';
-  return date.toLocaleString();
-}
+      // Ctrl/Cmd + E to export
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        exportToCSV();
+      }
 
-async function loadSyncStatus() {
-  const syncInfo = document.getElementById('sync-info');
-  if (!syncInfo) return;
+      // Ctrl/Cmd + D to toggle charts
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        toggleCharts();
+      }
 
-  try {
-    const response = await fetchWithTimeout('/api/update_status');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Arrow key navigation for table
+      if (e.target.tagName === 'TD' || e.target.tagName === 'TH') {
+        const currentRow = e.target.parentElement;
+        const currentCell = e.target;
+        const table = document.getElementById('etable');
+
+        switch (e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            const prevRow = currentRow.previousElementSibling;
+            if (prevRow) {
+              const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+              prevRow.children[cellIndex]?.focus();
+            }
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            const nextRow = currentRow.nextElementSibling;
+            if (nextRow) {
+              const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+              nextRow.children[cellIndex]?.focus();
+            }
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            if (currentCell.previousElementSibling) {
+              currentCell.previousElementSibling.focus();
+            }
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            if (currentCell.nextElementSibling) {
+              currentCell.nextElementSibling.focus();
+            }
+            break;
+        }
+      }
+    });
+
+    // Theme toggle functionality
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+
+      // Update button text with icons
+      const button = document.getElementById('theme-toggle');
+      button.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+
+      // Add a subtle animation
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        button.style.transform = 'scale(1)';
+      }, 150);
     }
 
-    const status = await response.json();
-    const lastRun = formatTimestampForDisplay(status.last_off_sync_completed);
-    const nextDue = formatTimestampForDisplay(status.next_off_sync_due);
-
-    let message = `Open Food Facts sync: last run ${lastRun}. Next due ${nextDue}.`;
-
-    if (status.last_off_sync_success === false && status.last_off_sync_error) {
-      message += ` Last run failed: ${status.last_off_sync_error}`;
-    } else if (status.last_off_sync_success === true) {
-      message += ` Last run matched ${status.last_off_sync_updated_count || 0} additives.`;
-    }
-
-    syncInfo.textContent = message;
-  } catch (error) {
-    syncInfo.textContent = 'Open Food Facts sync status is currently unavailable.';
-  }
-}
-
-// Load data from API or fallback to local JSON
-// query: optional search term for server-side filtering when API is used
-// limit: max results (default 1000 for initial, 500 for search)
-async function loadData(query = '', limit = 1000) {
-  const params = new URLSearchParams();
-  if (query) params.set('q', query);
-  if (limit) params.set('limit', limit);
-  const queryString = params.toString();
-  const apiUrl = '/api/enumbers' + (queryString ? '?' + queryString : '');
-
-  try {
-    const response = await fetchWithTimeout(apiUrl);
-    if (response.ok) {
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        apiAvailable = true;
-        return data;
+    // Load theme from localStorage on page load
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        const button = document.getElementById('theme-toggle');
+        button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+      } else {
+        const button = document.getElementById('theme-toggle');
+        button.textContent = '🌙 Dark Mode';
       }
     }
-    throw new Error('API not available');
-  } catch (error) {
-    if (!apiAvailable) {
-      // Only fallback to JSON on initial load (apiAvailable not yet set)
-      console.log('API not available, loading from local JSON file');
-      const response = await fetchWithTimeout('./enumbers.json');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+
+    // Chart functionality
+    function createCategoryChart(data) {
+      const ctx = document.getElementById('categoryChart');
+      if (!ctx || !data.length) return;
+
+      // Check if Chart.js is available
+      if (typeof Chart === 'undefined') {
+        console.error('Chart.js not available');
+        return;
       }
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        apiAvailable = false;
-        return data;
+
+      // Debug: Log the data being processed
+      console.log('Creating chart with data:', data);
+
+      // Count categories
+      const categoryCounts = {};
+      data.forEach(entry => {
+        const category = getCategory(entry.code);
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+
+      // Sort by count for better visualization
+      const sortedCategories = Object.entries(categoryCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10); // Show top 10 categories
+
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      // Chart.js data format
+      const chartData = {
+        labels: sortedCategories.map(([category]) => category),
+        datasets: [{
+          label: 'Number of E-Numbers',
+          data: sortedCategories.map(([, count]) => count),
+          backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+          ],
+          borderColor: isDark ? '#fff' : '#333',
+          borderWidth: 1
+        }]
+      };
+
+      // Debug: Log the processed data
+      console.log('Chart.js data:', chartData);
+      console.log('Sorted categories:', sortedCategories);
+
+      // Chart.js options
+      const chartOptions = {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: isDark ? '#e9ecef' : '#333',
+                padding: 20,
+                usePointStyle: true
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const label = context.label || '';
+                  const value = context.parsed;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return `${label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          },
+          animation: {
+            animateRotate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          }
+        }
+      };
+
+      console.log('Chart.js options:', chartOptions);
+
+      if (categoryChart) {
+        categoryChart.destroy();
+      }
+
+      categoryChart = new Chart(ctx, chartOptions);
+    }
+
+    function updateChart() {
+      if (!chartsVisible || !enumbers.length) return;
+
+      const currentFilter = document.getElementById('search').value.toLowerCase().trim();
+      const selectedCategory = document.getElementById('category-filter').value;
+
+      let filteredEntries = enumbers.filter(e =>
+        (e.code || '').toLowerCase().includes(currentFilter) ||
+        (e.name || '').toLowerCase().includes(currentFilter)
+      );
+
+      if (selectedCategory) {
+        filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
+      }
+
+      createCategoryChart(filteredEntries);
+    }
+
+    function toggleCharts() {
+      chartsVisible = !chartsVisible;
+      const container = document.getElementById('chart-container');
+      const button = document.getElementById('chart-toggle');
+
+      if (chartsVisible) {
+        container.style.display = 'block';
+        button.textContent = 'Hide Charts';
+        button.setAttribute('aria-expanded', 'true');
+        updateChart();
+      } else {
+        container.style.display = 'none';
+        button.textContent = 'Show Charts';
+        button.setAttribute('aria-expanded', 'false');
       }
     }
-    throw new Error(apiAvailable ? 'Search failed' : 'Invalid data format received');
-  }
-}
 
-// Initial load
-showLoading();
-loadSyncStatus();
-setInterval(loadSyncStatus, 60000);
-loadData()
-  .then(data => {
-    enumbers = data;
-    renderTable();
-    hideError();
-    setTimeout(() => updateChart(), 100);
-  })
-  .catch(error => {
-    console.error('Error loading E-numbers:', error);
-    showError('Failed to load E-number data. Please check your connection and try refreshing the page.');
-  })
-  .finally(() => {
-    hideLoading();
-  });
-</script>
+    // Export to CSV functionality
+    function exportToCSV() {
+      const csvContent = generateCSV();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'enumbers.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function generateCSV() {
+      const headers = ['E-Number', 'Name', 'Category', 'Open Food Facts URL', 'Wikidata URL'];
+      const csvRows = [headers.join(',')];
+
+      const currentFilter = document.getElementById('search').value.toLowerCase().trim();
+      const selectedCategory = document.getElementById('category-filter').value;
+
+      let filteredEntries = enumbers.filter(e =>
+        (e.code || '').toLowerCase().includes(currentFilter) ||
+        (e.name || '').toLowerCase().includes(currentFilter)
+      );
+
+      if (selectedCategory) {
+        filteredEntries = filteredEntries.filter(e => getCategory(e.code) === selectedCategory);
+      }
+
+      filteredEntries.forEach(entry => {
+        const category = getCategory(entry.code);
+        const offUrl = entry.openfoodfacts_additive?.url || entry.openfoodfacts?.link || '';
+        const wikiUrl = entry.openfoodfacts_additive?.sameAs?.[0] || '';
+
+        const row = [
+          `"${(entry.code || '').replace(/"/g, '""')}"`,
+          `"${(entry.name || '').replace(/"/g, '""')}"`,
+          `"${category}"`,
+          `"${offUrl}"`,
+          `"${wikiUrl}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      return csvRows.join('\n');
+    }
+
+    // Initialize theme and event listeners when DOM is ready
+    function initializeTheme() {
+      loadTheme();
+
+      // Set print date
+      document.getElementById('print-date').textContent = new Date().toLocaleDateString();
+
+      // Add event listeners
+      const themeButton = document.getElementById('theme-toggle');
+      if (themeButton) {
+        themeButton.addEventListener('click', toggleTheme);
+      }
+
+      const exportButton = document.getElementById('export-csv');
+      if (exportButton) {
+        exportButton.addEventListener('click', exportToCSV);
+      }
+
+      const chartToggleButton = document.getElementById('chart-toggle');
+      if (chartToggleButton) {
+        chartToggleButton.addEventListener('click', toggleCharts);
+      }
+
+      // Make table cells focusable for keyboard navigation
+      setTimeout(() => {
+        const tableCells = document.querySelectorAll('#etable td, #etable th');
+        tableCells.forEach(cell => {
+          cell.setAttribute('tabindex', '0');
+        });
+      }, 100);
+    }
+
+    // Load theme when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeTheme);
+    } else {
+      initializeTheme();
+    }
+
+    // Security: Fetch with error handling and timeout
+    function fetchWithTimeout(url, options = {}) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal
+      }).finally(() => {
+        clearTimeout(timeoutId);
+      });
+    }
+
+    function formatTimestampForDisplay(isoTimestamp) {
+      if (!isoTimestamp) return 'Not yet run';
+      const date = new Date(isoTimestamp);
+      if (Number.isNaN(date.getTime())) return 'Unknown';
+      return date.toLocaleString();
+    }
+
+    async function loadSyncStatus() {
+      const syncInfo = document.getElementById('sync-info');
+      if (!syncInfo) return;
+
+      try {
+        const response = await fetchWithTimeout('/api/update_status');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const status = await response.json();
+        const lastRun = formatTimestampForDisplay(status.last_off_sync_completed);
+        const nextDue = formatTimestampForDisplay(status.next_off_sync_due);
+        const sourceName = status.last_off_sync_source === 'eu-food-additives'
+          ? 'EU Food Additives'
+          : 'Open Food Facts';
+        const euStatus = status.last_off_sync_source === 'eu-food-additives'
+          ? 'success'
+          : status.last_off_sync_success === false
+            ? 'failed'
+            : 'not used';
+        const offStatus = status.last_off_sync_source === 'primary' || status.last_off_sync_source === 'fallback'
+          ? 'success'
+          : status.last_off_sync_source === 'eu-food-additives'
+            ? 'not used'
+            : 'unknown';
+
+        let message = `EU Food Additives: ${euStatus}. Open Food Facts: ${offStatus}. ${sourceName} sync: last run ${lastRun}. Next due ${nextDue}.`;
+
+        if (status.last_off_sync_success === false && status.last_off_sync_error) {
+          message += ` Last run failed: ${status.last_off_sync_error}`;
+        } else if (status.last_off_sync_success === true) {
+          message += ` Last run matched ${status.last_off_sync_updated_count || 0} additives.`;
+        }
+
+        syncInfo.textContent = message;
+      } catch (error) {
+        syncInfo.textContent = 'Additives sync status is currently unavailable.';
+      }
+    }
+
+    // Load data from API or fallback to local JSON
+    // query: optional search term for server-side filtering when API is used
+    // limit: max results (default 1000 for initial, 500 for search)
+    async function loadData(query = '', limit = 1000) {
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      if (limit) params.set('limit', limit);
+      const queryString = params.toString();
+      const apiUrl = '/api/enumbers' + (queryString ? '?' + queryString : '');
+
+      try {
+        const response = await fetchWithTimeout(apiUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            apiAvailable = true;
+            return data;
+          }
+        }
+        throw new Error('API not available');
+      } catch (error) {
+        if (!apiAvailable) {
+          // Only fallback to JSON on initial load (apiAvailable not yet set)
+          console.log('API not available, loading from local JSON file');
+          const response = await fetchWithTimeout('./enumbers.json');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            apiAvailable = false;
+            return data;
+          }
+        }
+        throw new Error(apiAvailable ? 'Search failed' : 'Invalid data format received');
+      }
+    }
+
+    // Initial load
+    showLoading();
+    loadSyncStatus();
+    setInterval(loadSyncStatus, 60000);
+    loadData()
+      .then(data => {
+        enumbers = data;
+        renderTable();
+        hideError();
+        setTimeout(() => updateChart(), 100);
+      })
+      .catch(error => {
+        console.error('Error loading E-numbers:', error);
+        showError('Failed to load E-number data. Please check your connection and try refreshing the page.');
+      })
+      .finally(() => {
+        hideLoading();
+      });
+  </script>
 </body>
+
 </html>
