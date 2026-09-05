@@ -33,7 +33,11 @@ TASK_STATUS_DEFAULTS = {
     "last_off_sync_updated_count": 0,
     "last_off_sync_error": None,
     "last_off_sync_source": None,
-    "last_off_enrichment_source": None
+    "last_off_enrichment_source": None,
+    "last_eu_sync_started": None,
+    "last_eu_sync_completed": None,
+    "last_off_enrichment_started": None,
+    "last_off_enrichment_completed": None
 }
 task_status = dict(TASK_STATUS_DEFAULTS)
 
@@ -463,11 +467,16 @@ def _fetch_off_additives():
 def update_enumbers_from_off_additives_logic():
     global enumbers, task_status
     print("Fetching additive lists from the EU Food Additives API and Open Food Facts...")
-    task_status["last_off_sync_started"] = datetime.now().isoformat()
+    sync_started = datetime.now().isoformat()
+    task_status["last_off_sync_started"] = sync_started
+    task_status["last_eu_sync_started"] = sync_started
+    task_status["last_off_enrichment_started"] = sync_started
     task_status["last_off_sync_error"] = None
     save_task_status()
     eu_additives, eu_source = _fetch_eu_additives()
+    task_status["last_eu_sync_completed"] = datetime.now().isoformat()
     off_additives, off_source = _fetch_off_additives()
+    task_status["last_off_enrichment_completed"] = datetime.now().isoformat()
     additives = eu_additives or off_additives
     sync_source = "eu-food-additives" if eu_additives else off_source
     task_status["last_off_sync_source"] = sync_source

@@ -1709,11 +1709,13 @@
         }
 
         const status = await response.json();
-        const lastRun = formatTimestampForDisplay(status.last_off_sync_completed);
+        const euLastRun = formatTimestampForDisplay(
+          status.last_eu_sync_completed || status.last_off_sync_completed
+        );
+        const offLastRun = formatTimestampForDisplay(
+          status.last_off_enrichment_completed || status.last_off_sync_completed
+        );
         const nextDue = formatTimestampForDisplay(status.next_off_sync_due);
-        const sourceName = status.last_off_sync_source === 'eu-food-additives'
-          ? 'EU Food Additives'
-          : 'Open Food Facts';
         const euStatus = status.last_off_sync_source === 'eu-food-additives'
           ? 'success'
           : status.last_off_sync_success === false
@@ -1725,7 +1727,7 @@
             ? 'failed'
             : 'unknown';
 
-        let message = `EU Food Additives: ${euStatus}. Open Food Facts: ${offStatus}. ${sourceName} sync: last run ${lastRun}. Next due ${nextDue}.`;
+        let message = `EU Food Additives: ${euStatus} (last run ${euLastRun}). Open Food Facts: ${offStatus} (last run ${offLastRun}). Next due ${nextDue}.`;
 
         if (status.last_off_sync_success === false && status.last_off_sync_error) {
           message += ` Last run failed: ${status.last_off_sync_error}`;
