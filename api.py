@@ -71,7 +71,7 @@ def add_security_headers(response):
 
 EN_FILE = 'enumbers.json'
 STATUS_FILE = 'sync_status.json'
-USER_AGENT = "ENumbersApp/1.0 (contact@example.com)"
+USER_AGENT = "ENumbersApp/1.0/https://enumbers.jarvisdiscordbot.net (contact@jarvisdiscordbot.net)"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--allow-editing', action='store_true', help='Allow editing endpoints')
