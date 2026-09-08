@@ -461,7 +461,8 @@
       }
 
       select,
-      .theme-toggle {
+      .theme-toggle,
+      .mobile-view-toggle {
         width: 100%;
       }
 
@@ -520,6 +521,7 @@
       .search-container,
       .controls-group,
       .theme-toggle,
+      .mobile-view-toggle,
       #export-csv,
       .results-info,
       #sync-info,
@@ -868,6 +870,219 @@
       border-color: var(--info-color);
     }
 
+    .mobile-view-toggle {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+    }
+
+    .mobile-view-toggle:hover,
+    .mobile-view-toggle[aria-pressed="true"] {
+      background: var(--info-color);
+      border-color: var(--info-color);
+      color: white;
+    }
+
+    body.mobile-view .table-container {
+      overflow: visible;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+
+    body.mobile-view table,
+    body.mobile-view tbody,
+    body.mobile-view tr,
+    body.mobile-view td {
+      display: block;
+      width: 100%;
+    }
+
+    body.mobile-view table {
+      min-width: 0;
+      background: transparent;
+    }
+
+    body.mobile-view thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    body.mobile-view tr {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--table-bg);
+      border: 1px solid var(--table-border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    body.mobile-view td {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--table-border);
+      text-align: right;
+    }
+
+    body.mobile-view td:last-child {
+      border-bottom: 0;
+    }
+
+    body.mobile-view td::before {
+      flex: 0 0 7rem;
+      color: var(--loading-color);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    body.mobile-view td:nth-child(1)::before {
+      content: "E-number";
+    }
+
+    body.mobile-view td:nth-child(2)::before {
+      content: "Name";
+    }
+
+    body.mobile-view td:nth-child(3)::before {
+      content: "Category";
+    }
+
+    body.mobile-view td:nth-child(4)::before {
+      content: "Open Food Facts";
+    }
+
+    body.mobile-view td:nth-child(5)::before {
+      content: "Wikidata";
+    }
+
+    body.mobile-view td:nth-child(6)::before {
+      content: "Research";
+    }
+
+    body.mobile-view .charts-section {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .mobile-menu-button,
+    .mobile-menu-overlay {
+      display: none;
+    }
+
+    body.mobile-view .mobile-menu-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0.65rem 0.8rem;
+      background: var(--info-color);
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    body.mobile-view .mobile-menu-button:hover {
+      background: var(--link-hover);
+    }
+
+    body.mobile-view .mobile-menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: block;
+      background: rgba(0, 0, 0, 0.38);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    body.mobile-view.menu-open .mobile-menu-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.mobile-view .controls-group {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      display: flex;
+      width: min(86vw, 340px);
+      padding: 5rem 1rem 1rem;
+      overflow-y: auto;
+      align-items: stretch;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 0.75rem;
+      background: var(--table-bg);
+      border-left: 1px solid var(--table-border);
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+    }
+
+    body.mobile-view.menu-open .controls-group {
+      transform: translateX(0);
+    }
+
+    body.mobile-view .controls-group select,
+    body.mobile-view .controls-group .theme-toggle,
+    body.mobile-view .controls-group .mobile-view-toggle,
+    body.mobile-view .controls-group #export-csv {
+      width: 100%;
+      flex: 0 0 auto;
+    }
+
+    body.mobile-view .controls-group::before {
+      content: "Menu";
+      position: absolute;
+      top: 1.25rem;
+      left: 1rem;
+      color: var(--text-color);
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    body.mobile-view.menu-open .mobile-menu-button {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 110;
+      background: var(--header-bg);
+      color: var(--text-color);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      body.mobile-view .mobile-menu-overlay,
+      body.mobile-view .controls-group {
+        transition: none;
+      }
+    }
+
     .chart-container {
       position: relative;
       height: 400px;
@@ -901,6 +1116,10 @@
     </div>
     <h1 id="main-heading">E-Number Lookup</h1>
 
+    <button id="mobile-menu-button" class="mobile-menu-button" type="button" aria-label="Open menu"
+      aria-controls="controls-group" aria-expanded="false">☰</button>
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay" aria-hidden="true"></div>
+
 
 
     <div class="search-container">
@@ -912,7 +1131,7 @@
           as you type.</div>
         <button id="clear-search" class="clear-search" title="Clear search" aria-label="Clear search input">✕</button>
       </div>
-      <div class="controls-group">
+      <div id="controls-group" class="controls-group">
         <label for="category-filter" class="sr-only">Filter by category</label>
         <select id="category-filter" class="category-filter" aria-label="Filter by category">
           <option value="">🔍 All Categories</option>
@@ -934,6 +1153,8 @@
           <option value="name">🔤 Sort by Name</option>
         </select>
         <button id="theme-toggle" class="enhanced-button" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+        <button id="mobile-view-toggle" class="mobile-view-toggle" type="button" aria-pressed="false"
+          aria-label="Switch to mobile view">📱 Mobile View</button>
         <button id="export-csv" class="enhanced-button" title="Export current results to CSV (Ctrl+E)"
           aria-label="Export results to CSV">📁 Export CSV</button>
       </div>
@@ -1466,6 +1687,42 @@
       }
     }
 
+    function setMobileView(enabled) {
+      document.body.classList.toggle('mobile-view', enabled);
+      localStorage.setItem('mobileView', enabled ? 'true' : 'false');
+
+      const button = document.getElementById('mobile-view-toggle');
+      button.setAttribute('aria-pressed', String(enabled));
+      button.textContent = enabled ? '🖥️ Desktop View' : '📱 Mobile View';
+      button.setAttribute('aria-label', enabled ? 'Switch to desktop view' : 'Switch to mobile view');
+    }
+
+    function initializeMobileView() {
+      const button = document.getElementById('mobile-view-toggle');
+      const menuButton = document.getElementById('mobile-menu-button');
+      const menuOverlay = document.getElementById('mobile-menu-overlay');
+
+      setMobileView(localStorage.getItem('mobileView') === 'true');
+      button.addEventListener('click', () => {
+        setMobileView(!document.body.classList.contains('mobile-view'));
+      });
+
+      function setMenuOpen(open) {
+        document.body.classList.toggle('menu-open', open);
+        menuButton.setAttribute('aria-expanded', String(open));
+        menuButton.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        menuButton.textContent = open ? '×' : '☰';
+      }
+
+      menuButton.addEventListener('click', () => {
+        setMenuOpen(!document.body.classList.contains('menu-open'));
+      });
+      menuOverlay.addEventListener('click', () => setMenuOpen(false));
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') setMenuOpen(false);
+      });
+    }
+
     // Chart functionality
     function createCategoryChart(data) {
       const ctx = document.getElementById('categoryChart');
@@ -1642,6 +1899,7 @@
     // Initialize theme and event listeners when DOM is ready
     function initializeTheme() {
       loadTheme();
+      initializeMobileView();
 
       // Set print date
       document.getElementById('print-date').textContent = new Date().toLocaleDateString();
